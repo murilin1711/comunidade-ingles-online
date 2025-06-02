@@ -1,41 +1,27 @@
 
 import React, { useState } from 'react';
-import { signInWithEmailAndPassword } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { auth, db } from '@/lib/firebase';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/components/ui/sonner';
 
 const Login = () => {
-  const [matricula, setMatricula] = useState('');
-  const [senha, setSenha] = useState('');
+  const [formData, setFormData] = useState({
+    matricula: '',
+    senha: ''
+  });
   const [loading, setLoading] = useState(false);
+  const { signIn } = useAuth();
   const navigate = useNavigate();
-  const { user } = useAuth();
 
-  React.useEffect(() => {
-    if (user) {
-      checkUserRoleAndRedirect();
-    }
-  }, [user]);
-
-  const checkUserRoleAndRedirect = async () => {
-    if (user) {
-      const userDoc = await getDoc(doc(db, 'alunos', user.uid));
-      if (userDoc.exists()) {
-        const userData = userDoc.data();
-        if (userData.role === 'professor') {
-          navigate('/dashboard-professor');
-        } else {
-          navigate('/dashboard-aluno');
-        }
-      }
-    }
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value
+    });
   };
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -43,14 +29,12 @@ const Login = () => {
     setLoading(true);
 
     try {
-      const email = `${matricula}@comunidade.app`;
-      await signInWithEmailAndPassword(auth, email, senha);
-      
-      // O redirecionamento será feito pelo useEffect
+      const email = `${formData.matricula}@comunidade.app`;
+      await signIn(email, formData.senha);
       toast.success('Login realizado com sucesso!');
     } catch (error: any) {
       console.error('Erro no login:', error);
-      toast.error('Erro no login. Verifique sua matrícula e senha.');
+      toast.error('Matrícula ou senha incorretos');
     } finally {
       setLoading(false);
     }
@@ -71,9 +55,10 @@ const Login = () => {
               <Label htmlFor="matricula">Matrícula</Label>
               <Input
                 id="matricula"
+                name="matricula"
                 type="text"
-                value={matricula}
-                onChange={(e) => setMatricula(e.target.value)}
+                value={formData.matricula}
+                onChange={handleChange}
                 placeholder="Digite sua matrícula"
                 required
               />
@@ -82,9 +67,10 @@ const Login = () => {
               <Label htmlFor="senha">Senha</Label>
               <Input
                 id="senha"
+                name="senha"
                 type="password"
-                value={senha}
-                onChange={(e) => setSenha(e.target.value)}
+                value={formData.senha}
+                onChange={handleChange}
                 placeholder="Digite sua senha"
                 required
               />
@@ -93,14 +79,22 @@ const Login = () => {
               {loading ? 'Entrando...' : 'Entrar'}
             </Button>
           </form>
-          <div className="mt-4 text-center">
-            <Button
-              variant="link"
-              onClick={() => navigate('/cadastro')}
-              className="text-sm"
-            >
-              Não tem conta? Cadastre-se aqui
-            </Button>
+          
+          <div className="mt-6 space-y-2">
+            <div className="text-center">
+              <Button
+                variant="outline"
+                onClick={() => navigate('/cadastro-funcionario')}
+                className="w-full border-red-200 text-red-600 hover:bg-red-50"
+              >
+                Acesso para Funcionários
+              </Button>
+            </div>
+            <div className="text-center">
+              <p className="text-xs text-gray-500">
+                Área restrita para criação de novas contas
+              </p>
+            </div>
           </div>
         </CardContent>
       </Card>

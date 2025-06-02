@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { auth, db } from '@/lib/firebase';
 import { toast } from '@/components/ui/sonner';
 
@@ -17,7 +18,8 @@ const Cadastro = () => {
     emailWhatsApp: '',
     telegramChatId: '',
     senha: '',
-    confirmarSenha: ''
+    confirmarSenha: '',
+    tipoUsuario: 'aluno'
   });
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -26,6 +28,13 @@ const Cadastro = () => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value
+    });
+  };
+
+  const handleTipoUsuarioChange = (value: string) => {
+    setFormData({
+      ...formData,
+      tipoUsuario: value
     });
   };
 
@@ -48,19 +57,35 @@ const Cadastro = () => {
       const email = `${formData.matricula}@comunidade.app`;
       const userCredential = await createUserWithEmailAndPassword(auth, email, formData.senha);
       
-      // Criar documento do aluno no Firestore
-      await setDoc(doc(db, 'alunos', userCredential.user.uid), {
+      // Criar documento do usuário no Firestore baseado no tipo
+      const userData = {
         matricula: formData.matricula,
         nome: formData.nome,
         emailWhatsApp: formData.emailWhatsApp,
         telegramChatId: formData.telegramChatId,
-        role: 'aluno',
-        statusSuspenso: false,
-        fimSuspensao: null
-      });
+        role: formData.tipoUsuario,
+        criadoEm: new Date(),
+        criadoPor: 'funcionario' // Indica que foi criado por um funcionário
+      };
 
-      toast.success('Cadastro realizado com sucesso!');
-      navigate('/dashboard-aluno');
+      if (formData.tipoUsuario === 'aluno') {
+        await setDoc(doc(db, 'alunos', userCredential.user.uid), {
+          ...userData,
+          statusSuspenso: false,
+          fimSuspensao: null
+        });
+      } else {
+        await setDoc(doc(db, 'professores', userCredential.user.uid), userData);
+      }
+
+      toast.success(`Conta de ${formData.tipoUsuario} criada com sucesso!`);
+      
+      // Redirecionar baseado no tipo de usuário
+      if (formData.tipoUsuario === 'aluno') {
+        navigate('/dashboard-aluno');
+      } else {
+        navigate('/dashboard-professor');
+      }
     } catch (error: any) {
       console.error('Erro no cadastro:', error);
       if (error.code === 'auth/email-already-in-use') {
@@ -77,25 +102,46 @@ const Cadastro = () => {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl">Cadastro</CardTitle>
+          <CardTitle className="text-2xl">Cadastro de Usuário</CardTitle>
           <CardDescription>
-            Crie sua conta de aluno
+            Área restrita para funcionários - Criar nova conta
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleCadastro} className="space-y-4">
             <div>
-              <Label htmlFor="matricula">Matrícula</Label>
+              <Label htmlFor="tipoUsuario">Tipo de Usuário</Label>
+              <RadioGroup 
+                value={formData.tipoUsuario} 
+                onValueChange={handleTipoUsuarioChange}
+                className="mt-2"
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="aluno" id="aluno" />
+                  <Label htmlFor="aluno">Aluno</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="professor" id="professor" />
+                  <Label htmlFor="professor">Mentor/Professor</Label>
+                </div>
+              </RadioGroup>
+            </div>
+            
+            <div>
+              <Label htmlFor="matricula">
+                {formData.tipoUsuario === 'aluno' ? 'Matrícula' : 'ID Funcionário'}
+              </Label>
               <Input
                 id="matricula"
                 name="matricula"
                 type="text"
                 value={formData.matricula}
                 onChange={handleChange}
-                placeholder="Digite sua matrícula"
+                placeholder={formData.tipoUsuario === 'aluno' ? 'Digite a matrícula' : 'Digite o ID do funcionário'}
                 required
               />
             </div>
+            
             <div>
               <Label htmlFor="nome">Nome Completo</Label>
               <Input
@@ -104,10 +150,11 @@ const Cadastro = () => {
                 type="text"
                 value={formData.nome}
                 onChange={handleChange}
-                placeholder="Digite seu nome completo"
+                placeholder="Digite o nome completo"
                 required
               />
             </div>
+            
             <div>
               <Label htmlFor="emailWhatsApp">Email/WhatsApp</Label>
               <Input
@@ -116,10 +163,11 @@ const Cadastro = () => {
                 type="email"
                 value={formData.emailWhatsApp}
                 onChange={handleChange}
-                placeholder="Digite seu email ou WhatsApp"
+                placeholder="Digite o email ou WhatsApp"
                 required
               />
             </div>
+            
             <div>
               <Label htmlFor="telegramChatId">Telegram Chat ID</Label>
               <Input
@@ -128,9 +176,10 @@ const Cadastro = () => {
                 type="text"
                 value={formData.telegramChatId}
                 onChange={handleChange}
-                placeholder="Digite seu Chat ID do Telegram"
+                placeholder="Digite o Chat ID do Telegram"
               />
             </div>
+            
             <div>
               <Label htmlFor="senha">Senha</Label>
               <Input
@@ -139,10 +188,11 @@ const Cadastro = () => {
                 type="password"
                 value={formData.senha}
                 onChange={handleChange}
-                placeholder="Digite sua senha (min. 6 caracteres)"
+                placeholder="Digite a senha (min. 6 caracteres)"
                 required
               />
             </div>
+            
             <div>
               <Label htmlFor="confirmarSenha">Confirmar Senha</Label>
               <Input
@@ -151,21 +201,23 @@ const Cadastro = () => {
                 type="password"
                 value={formData.confirmarSenha}
                 onChange={handleChange}
-                placeholder="Confirme sua senha"
+                placeholder="Confirme a senha"
                 required
               />
             </div>
+            
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? 'Cadastrando...' : 'Cadastrar'}
+              {loading ? 'Criando conta...' : `Criar conta de ${formData.tipoUsuario}`}
             </Button>
           </form>
+          
           <div className="mt-4 text-center">
             <Button
               variant="link"
               onClick={() => navigate('/login')}
               className="text-sm"
             >
-              Já tem conta? Faça login
+              Voltar ao login
             </Button>
           </div>
         </CardContent>

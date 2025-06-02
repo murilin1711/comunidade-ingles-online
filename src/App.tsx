@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import Login from "./pages/Login";
 import Cadastro from "./pages/Cadastro";
+import CadastroFuncionario from "./pages/CadastroFuncionario";
 import DashboardAluno from "./pages/DashboardAluno";
 import DashboardProfessor from "./pages/DashboardProfessor";
 import AgendamentoAulas from "./pages/AgendamentoAulas";
@@ -15,28 +16,36 @@ import NotFound from "./pages/NotFound";
 const queryClient = new QueryClient();
 
 const ProtectedRoute = ({ children, requiredRole }: { children: React.ReactNode, requiredRole?: string }) => {
-  const { user, loading } = useAuth();
+  const { user, userData, loading } = useAuth();
   
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center">Carregando...</div>;
   }
   
-  if (!user) {
+  if (!user || !userData) {
     return <Navigate to="/login" replace />;
+  }
+  
+  if (requiredRole && userData.role !== requiredRole) {
+    // Redirecionar para o dashboard apropriado se o usuário tem role diferente
+    const redirectPath = userData.role === 'aluno' ? '/dashboard-aluno' : '/dashboard-professor';
+    return <Navigate to={redirectPath} replace />;
   }
   
   return <>{children}</>;
 };
 
 const PublicRoute = ({ children }: { children: React.ReactNode }) => {
-  const { user, loading } = useAuth();
+  const { user, userData, loading } = useAuth();
   
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center">Carregando...</div>;
   }
   
-  if (user) {
-    return <Navigate to="/dashboard-aluno" replace />;
+  if (user && userData) {
+    // Redirecionar baseado no tipo de usuário
+    const redirectPath = userData.role === 'aluno' ? '/dashboard-aluno' : '/dashboard-professor';
+    return <Navigate to={redirectPath} replace />;
   }
   
   return <>{children}</>;
@@ -51,23 +60,28 @@ const AppRoutes = () => {
           <Login />
         </PublicRoute>
       } />
+      <Route path="/cadastro-funcionario" element={
+        <PublicRoute>
+          <CadastroFuncionario />
+        </PublicRoute>
+      } />
       <Route path="/cadastro" element={
         <PublicRoute>
           <Cadastro />
         </PublicRoute>
       } />
       <Route path="/dashboard-aluno" element={
-        <ProtectedRoute>
+        <ProtectedRoute requiredRole="aluno">
           <DashboardAluno />
         </ProtectedRoute>
       } />
       <Route path="/dashboard-professor" element={
-        <ProtectedRoute>
+        <ProtectedRoute requiredRole="professor">
           <DashboardProfessor />
         </ProtectedRoute>
       } />
       <Route path="/agendamento" element={
-        <ProtectedRoute>
+        <ProtectedRoute requiredRole="aluno">
           <AgendamentoAulas />
         </ProtectedRoute>
       } />
