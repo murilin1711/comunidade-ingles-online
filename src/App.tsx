@@ -51,7 +51,7 @@ const PublicRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
-const AppRoutes = () => {
+const AppContent = () => {
   return (
     <Routes>
       <Route path="/" element={<Navigate to="/login" replace />} />
@@ -97,7 +97,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <AppRoutes />
+          <AppContent />
         </BrowserRouter>
       </TooltipProvider>
     </AuthProvider>
