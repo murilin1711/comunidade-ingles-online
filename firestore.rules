@@ -1,0 +1,43 @@
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Regras para alunos
+    match /alunos/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read: if request.auth != null && 
+        exists(/databases/$(database)/documents/alunos/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/alunos/$(request.auth.uid)).data.role == 'professor';
+    }
+    
+    // Regras para aulas
+    match /aulas/{aulaId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && 
+        exists(/databases/$(database)/documents/alunos/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/alunos/$(request.auth.uid)).data.role == 'professor';
+    }
+    
+    // Regras para inscrições
+    match /inscricoes/{inscricaoId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && (
+        resource.data.matricula == request.auth.uid ||
+        (exists(/databases/$(database)/documents/alunos/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/alunos/$(request.auth.uid)).data.role == 'professor')
+      );
+    }
+    
+    // Regras para suspensões
+    match /suspensoes/{suspensaoId} {
+      allow read: if request.auth != null && (
+        resource.data.matricula == request.auth.uid ||
+        (exists(/databases/$(database)/documents/alunos/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/alunos/$(request.auth.uid)).data.role == 'professor')
+      );
+      allow write: if request.auth != null && 
+        exists(/databases/$(database)/documents/alunos/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/alunos/$(request.auth.uid)).data.role == 'professor';
+    }
+  }
+}

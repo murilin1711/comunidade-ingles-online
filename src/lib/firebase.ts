@@ -6,7 +6,6 @@ import { getStorage } from 'firebase/storage';
 
 // Firebase configuration
 const firebaseConfig = {
-  // Add your Firebase config here
   apiKey: "your-api-key",
   authDomain: "your-project.firebaseapp.com",
   projectId: "your-project-id",
