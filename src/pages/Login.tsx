@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Label } from "@/components/ui/label";
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/components/ui/sonner';
+import Logo from '@/components/Logo';
 
 const Login = () => {
   const [formData, setFormData] = useState({
@@ -41,18 +42,19 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-      <Card className="w-full max-w-md">
+    <div className="min-h-screen bg-gradient-to-br from-yellow-50 to-yellow-100 flex items-center justify-center p-4">
+      <Card className="w-full max-w-md border-black/20 shadow-lg">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl">Login</CardTitle>
-          <CardDescription>
+          <Logo size="lg" className="mb-4" />
+          <CardTitle className="text-2xl text-black">Login</CardTitle>
+          <CardDescription className="text-black/70">
             Entre com sua matrícula e senha
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
-              <Label htmlFor="matricula">Matrícula</Label>
+              <Label htmlFor="matricula" className="text-black">Matrícula</Label>
               <Input
                 id="matricula"
                 name="matricula"
@@ -60,11 +62,12 @@ const Login = () => {
                 value={formData.matricula}
                 onChange={handleChange}
                 placeholder="Digite sua matrícula"
+                className="border-black/20 focus:border-yellow-500 focus:ring-yellow-500"
                 required
               />
             </div>
             <div>
-              <Label htmlFor="senha">Senha</Label>
+              <Label htmlFor="senha" className="text-black">Senha</Label>
               <Input
                 id="senha"
                 name="senha"
@@ -72,10 +75,15 @@ const Login = () => {
                 value={formData.senha}
                 onChange={handleChange}
                 placeholder="Digite sua senha"
+                className="border-black/20 focus:border-yellow-500 focus:ring-yellow-500"
                 required
               />
             </div>
-            <Button type="submit" className="w-full" disabled={loading}>
+            <Button 
+              type="submit" 
+              className="w-full bg-yellow-500 hover:bg-yellow-600 text-black font-semibold" 
+              disabled={loading}
+            >
               {loading ? 'Entrando...' : 'Entrar'}
             </Button>
           </form>
@@ -85,13 +93,13 @@ const Login = () => {
               <Button
                 variant="outline"
                 onClick={() => navigate('/cadastro-funcionario')}
-                className="w-full border-red-200 text-red-600 hover:bg-red-50"
+                className="w-full border-black/30 text-black hover:bg-yellow-50"
               >
                 Acesso para Funcionários
               </Button>
             </div>
             <div className="text-center">
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-black/60">
                 Área restrita para criação de novas contas
               </p>
             </div>

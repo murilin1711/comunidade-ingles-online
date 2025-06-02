@@ -9,6 +9,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/components/ui/sonner';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import Logo from '@/components/Logo';
 
 interface Aula {
   id: string;
@@ -108,22 +109,29 @@ const DashboardAluno = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4">
+    <div className="min-h-screen bg-gradient-to-br from-yellow-50 to-yellow-100 p-4">
       <div className="max-w-4xl mx-auto">
         <div className="flex justify-between items-center mb-6">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Dashboard do Aluno</h1>
-            {alunoData && (
-              <p className="text-gray-600">Bem-vindo, {alunoData.nome}!</p>
-            )}
+          <div className="flex items-center gap-4">
+            <Logo size="md" />
+            <div>
+              <h1 className="text-3xl font-bold text-black">Dashboard do Aluno</h1>
+              {alunoData && (
+                <p className="text-black/70">Bem-vindo, {alunoData.nome}!</p>
+              )}
+            </div>
           </div>
-          <Button onClick={logout} variant="outline">
+          <Button 
+            onClick={logout} 
+            variant="outline"
+            className="border-black/30 text-black hover:bg-yellow-200"
+          >
             Sair
           </Button>
         </div>
 
         {isAlunoSuspenso() && alunoData?.fimSuspensao && (
-          <Card className="mb-6 border-red-200 bg-red-50">
+          <Card className="mb-6 border-red-500 bg-red-50">
             <CardContent className="pt-6">
               <div className="text-red-800">
                 <strong>Você está suspenso até:</strong>{' '}
@@ -134,7 +142,7 @@ const DashboardAluno = () => {
         )}
 
         <div className="grid gap-4">
-          <h2 className="text-xl font-semibold mb-4">Aulas Disponíveis</h2>
+          <h2 className="text-xl font-semibold mb-4 text-black">Aulas Disponíveis</h2>
           
           {aulas.map((aula) => {
             const vagasRestantes = getVagasRestantes(aula);
@@ -142,20 +150,23 @@ const DashboardAluno = () => {
             const suspenso = isAlunoSuspenso();
             
             return (
-              <Card key={aula.id}>
+              <Card key={aula.id} className="border-black/20 shadow-md">
                 <CardHeader>
                   <div className="flex justify-between items-start">
                     <div>
-                      <CardTitle className="text-lg">
+                      <CardTitle className="text-lg text-black">
                         {format(dataAula, 'dd/MM/yyyy', { locale: ptBR })} - {aula.horario}
                       </CardTitle>
-                      <p className="text-sm text-gray-600 mt-1">
-                        Link: <a href={aula.linkMeet} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                      <p className="text-sm text-black/60 mt-1">
+                        Link: <a href={aula.linkMeet} target="_blank" rel="noopener noreferrer" className="text-yellow-600 hover:underline">
                           {aula.linkMeet}
                         </a>
                       </p>
                     </div>
-                    <Badge variant={vagasRestantes > 0 ? "default" : "secondary"}>
+                    <Badge 
+                      variant={vagasRestantes > 0 ? "default" : "secondary"}
+                      className={vagasRestantes > 0 ? "bg-yellow-500 text-black" : "bg-black/10 text-black"}
+                    >
                       {vagasRestantes > 0 ? `${vagasRestantes} vagas` : 'Lotado'}
                     </Badge>
                   </div>
@@ -168,6 +179,7 @@ const DashboardAluno = () => {
                       <Button 
                         onClick={() => handleInscricao(aula.id, 'confirmado')}
                         disabled={loading}
+                        className="bg-yellow-500 hover:bg-yellow-600 text-black font-semibold"
                       >
                         Inscrever-me
                       </Button>
@@ -176,6 +188,7 @@ const DashboardAluno = () => {
                         variant="outline"
                         onClick={() => handleInscricao(aula.id, 'espera')}
                         disabled={loading}
+                        className="border-black/30 text-black hover:bg-yellow-50"
                       >
                         Entrar na Lista de Espera
                       </Button>
@@ -187,9 +200,9 @@ const DashboardAluno = () => {
           })}
           
           {aulas.length === 0 && (
-            <Card>
+            <Card className="border-black/20">
               <CardContent className="pt-6 text-center">
-                <p className="text-gray-500">Nenhuma aula disponível no momento.</p>
+                <p className="text-black/60">Nenhuma aula disponível no momento.</p>
               </CardContent>
             </Card>
           )}
