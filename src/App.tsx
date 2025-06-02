@@ -9,6 +9,7 @@ import Login from "./pages/Login";
 import Cadastro from "./pages/Cadastro";
 import DashboardAluno from "./pages/DashboardAluno";
 import DashboardProfessor from "./pages/DashboardProfessor";
+import AgendamentoAulas from "./pages/AgendamentoAulas";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -63,6 +64,11 @@ const AppRoutes = () => {
       <Route path="/dashboard-professor" element={
         <ProtectedRoute>
           <DashboardProfessor />
+        </ProtectedRoute>
+      } />
+      <Route path="/agendamento" element={
+        <ProtectedRoute>
+          <AgendamentoAulas />
         </ProtectedRoute>
       } />
       <Route path="*" element={<NotFound />} />

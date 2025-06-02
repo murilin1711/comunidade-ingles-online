@@ -175,9 +175,17 @@ const DashboardProfessor = () => {
       <div className="max-w-6xl mx-auto">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold text-gray-900">Dashboard do Professor</h1>
-          <Button onClick={logout} variant="outline">
-            Sair
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              onClick={() => window.location.href = '/agendamento'} 
+              variant="outline"
+            >
+              Agendamento
+            </Button>
+            <Button onClick={logout} variant="outline">
+              Sair
+            </Button>
+          </div>
         </div>
 
         <Card className="mb-6">

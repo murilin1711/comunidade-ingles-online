@@ -1,7 +1,7 @@
-
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
 import { enviarWhatsApp, enviarTelegram } from './helpers/enviarNotificacao';
+import { processarAgendamentos } from './agendamentoAulas';
 
 admin.initializeApp();
 
@@ -205,6 +205,52 @@ export const marcarFalta = functions.https.onCall(async (data, context) => {
     return { sucesso: true };
   } catch (error) {
     console.error('Erro ao marcar falta:', error);
+    throw new functions.https.HttpsError('internal', 'Erro interno do servidor');
+  }
+});
+
+// Cloud Function para criar aulas manualmente (para teste)
+export const criarAulasManual = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'Usuário não autenticado');
+  }
+
+  try {
+    const agora = new Date();
+    const inicioSemana = new Date(agora);
+    inicioSemana.setDate(agora.getDate() - agora.getDay() + 1); // Segunda-feira
+    inicioSemana.setHours(0, 0, 0, 0);
+
+    const fimSemana = new Date(inicioSemana);
+    fimSemana.setDate(inicioSemana.getDate() + 6); // Domingo
+    fimSemana.setHours(23, 59, 59, 999);
+
+    // Criar aulas de segunda a sexta
+    const horarios = ['08:00', '09:00', '10:00', '14:00', '15:00', '16:00', '19:00', '20:00'];
+    const diasUteis = [1, 2, 3, 4, 5]; // Segunda a sexta
+
+    let aulasCreated = 0;
+
+    for (const dia of diasUteis) {
+      const dataAula = new Date(inicioSemana);
+      dataAula.setDate(inicioSemana.getDate() + dia - 1);
+
+      for (const horario of horarios) {
+        await db.collection('aulas').add({
+          data: admin.firestore.Timestamp.fromDate(dataAula),
+          horario: horario,
+          linkMeet: `https://meet.google.com/new`,
+          capacidade: 6,
+          criadoEm: admin.firestore.FieldValue.serverTimestamp(),
+          liberadaEm: admin.firestore.FieldValue.serverTimestamp()
+        });
+        aulasCreated++;
+      }
+    }
+
+    return { sucesso: true, aulasCreated };
+  } catch (error) {
+    console.error('Erro ao criar aulas:', error);
     throw new functions.https.HttpsError('internal', 'Erro interno do servidor');
   }
 });
