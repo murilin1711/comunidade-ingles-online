@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -14,7 +13,7 @@ const CadastroFuncionario = () => {
   const navigate = useNavigate();
 
   // Senha fixa para funcionários (em produção, isso deveria vir de uma fonte segura)
-  const SENHA_FUNCIONARIO = 'admin123';
+  const SENHA_FUNCIONARIO = '@Comunidade1%1090';
 
   const handleAcesso = (e: React.FormEvent) => {
     e.preventDefault();
