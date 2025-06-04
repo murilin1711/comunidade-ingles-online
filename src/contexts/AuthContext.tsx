@@ -7,8 +7,7 @@ import { auth, db } from '@/lib/firebase';
 interface UserData {
   matricula: string;
   nome: string;
-  emailWhatsApp: string;
-  telegramChatId?: string;
+  email: string;
   role: 'aluno' | 'professor';
   statusSuspenso?: boolean;
   fimSuspensao?: Date | null;

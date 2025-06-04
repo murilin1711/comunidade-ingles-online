@@ -11,8 +11,8 @@ import Logo from '@/components/Logo';
 
 const Login = () => {
   const [formData, setFormData] = useState({
-    matricula: '',
-    senha: ''
+    email: '',
+    matricula: ''
   });
   const [loading, setLoading] = useState(false);
   const { signIn } = useAuth();
@@ -30,12 +30,11 @@ const Login = () => {
     setLoading(true);
 
     try {
-      const email = `${formData.matricula}@comunidade.app`;
-      await signIn(email, formData.senha);
+      await signIn(formData.email, formData.matricula);
       toast.success('Login realizado com sucesso!');
     } catch (error: any) {
       console.error('Erro no login:', error);
-      toast.error('Matrícula ou senha incorretos');
+      toast.error('Email ou matrícula incorretos');
     } finally {
       setLoading(false);
     }
@@ -48,33 +47,33 @@ const Login = () => {
           <Logo size="lg" className="mb-4" />
           <CardTitle className="text-2xl text-black">Login</CardTitle>
           <CardDescription className="text-black/70">
-            Entre com sua matrícula e senha
+            Entre com seu email e matrícula
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
-              <Label htmlFor="matricula" className="text-black">Matrícula</Label>
+              <Label htmlFor="email" className="text-black">Email</Label>
               <Input
-                id="matricula"
-                name="matricula"
-                type="text"
-                value={formData.matricula}
+                id="email"
+                name="email"
+                type="email"
+                value={formData.email}
                 onChange={handleChange}
-                placeholder="Digite sua matrícula"
+                placeholder="Digite seu email"
                 className="border-black/20 focus:border-yellow-500 focus:ring-yellow-500"
                 required
               />
             </div>
             <div>
-              <Label htmlFor="senha" className="text-black">Senha</Label>
+              <Label htmlFor="matricula" className="text-black">Matrícula/Senha</Label>
               <Input
-                id="senha"
-                name="senha"
+                id="matricula"
+                name="matricula"
                 type="password"
-                value={formData.senha}
+                value={formData.matricula}
                 onChange={handleChange}
-                placeholder="Digite sua senha"
+                placeholder="Digite sua matrícula"
                 className="border-black/20 focus:border-yellow-500 focus:ring-yellow-500"
                 required
               />

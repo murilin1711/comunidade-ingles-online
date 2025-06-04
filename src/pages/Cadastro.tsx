@@ -15,10 +15,7 @@ const Cadastro = () => {
   const [formData, setFormData] = useState({
     matricula: '',
     nome: '',
-    emailWhatsApp: '',
-    telegramChatId: '',
-    senha: '',
-    confirmarSenha: '',
+    email: '',
     tipoUsuario: 'aluno'
   });
   const [loading, setLoading] = useState(false);
@@ -41,31 +38,26 @@ const Cadastro = () => {
   const handleCadastro = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (formData.senha !== formData.confirmarSenha) {
-      toast.error('As senhas não coincidem');
-      return;
-    }
-
-    if (formData.senha.length < 6) {
-      toast.error('A senha deve ter pelo menos 6 caracteres');
+    if (!formData.email || !formData.matricula || !formData.nome) {
+      toast.error('Todos os campos são obrigatórios');
       return;
     }
 
     setLoading(true);
 
     try {
-      const email = `${formData.matricula}@comunidade.app`;
-      const userCredential = await createUserWithEmailAndPassword(auth, email, formData.senha);
+      // Usar a matrícula como senha
+      const senhaGerada = formData.matricula;
+      const userCredential = await createUserWithEmailAndPassword(auth, formData.email, senhaGerada);
       
       // Criar documento do usuário no Firestore baseado no tipo
       const userData = {
         matricula: formData.matricula,
         nome: formData.nome,
-        emailWhatsApp: formData.emailWhatsApp,
-        telegramChatId: formData.telegramChatId,
+        email: formData.email,
         role: formData.tipoUsuario,
         criadoEm: new Date(),
-        criadoPor: 'funcionario' // Indica que foi criado por um funcionário
+        criadoPor: 'funcionario'
       };
 
       if (formData.tipoUsuario === 'aluno') {
@@ -79,6 +71,7 @@ const Cadastro = () => {
       }
 
       toast.success(`Conta de ${formData.tipoUsuario} criada com sucesso!`);
+      toast.success(`Login: ${formData.email} | Senha: ${formData.matricula}`);
       
       // Redirecionar baseado no tipo de usuário
       if (formData.tipoUsuario === 'aluno') {
@@ -89,7 +82,9 @@ const Cadastro = () => {
     } catch (error: any) {
       console.error('Erro no cadastro:', error);
       if (error.code === 'auth/email-already-in-use') {
-        toast.error('Esta matrícula já está cadastrada');
+        toast.error('Este email já está cadastrado');
+      } else if (error.code === 'auth/weak-password') {
+        toast.error('A matrícula deve ter pelo menos 6 caracteres');
       } else {
         toast.error('Erro no cadastro. Tente novamente.');
       }
@@ -99,18 +94,18 @@ const Cadastro = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-      <Card className="w-full max-w-md">
+    <div className="min-h-screen bg-gradient-to-br from-yellow-50 to-yellow-100 flex items-center justify-center p-4">
+      <Card className="w-full max-w-md border-black/20 shadow-lg">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl">Cadastro de Usuário</CardTitle>
-          <CardDescription>
+          <CardTitle className="text-2xl text-black">Cadastro de Usuário</CardTitle>
+          <CardDescription className="text-black/70">
             Área restrita para funcionários - Criar nova conta
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleCadastro} className="space-y-4">
             <div>
-              <Label htmlFor="tipoUsuario">Tipo de Usuário</Label>
+              <Label htmlFor="tipoUsuario" className="text-black">Tipo de Usuário</Label>
               <RadioGroup 
                 value={formData.tipoUsuario} 
                 onValueChange={handleTipoUsuarioChange}
@@ -118,17 +113,17 @@ const Cadastro = () => {
               >
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="aluno" id="aluno" />
-                  <Label htmlFor="aluno">Aluno</Label>
+                  <Label htmlFor="aluno" className="text-black">Aluno</Label>
                 </div>
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="professor" id="professor" />
-                  <Label htmlFor="professor">Mentor/Professor</Label>
+                  <Label htmlFor="professor" className="text-black">Mentor/Professor</Label>
                 </div>
               </RadioGroup>
             </div>
             
             <div>
-              <Label htmlFor="matricula">
+              <Label htmlFor="matricula" className="text-black">
                 {formData.tipoUsuario === 'aluno' ? 'Matrícula' : 'ID Funcionário'}
               </Label>
               <Input
@@ -138,12 +133,13 @@ const Cadastro = () => {
                 value={formData.matricula}
                 onChange={handleChange}
                 placeholder={formData.tipoUsuario === 'aluno' ? 'Digite a matrícula' : 'Digite o ID do funcionário'}
+                className="border-black/20 focus:border-yellow-500 focus:ring-yellow-500"
                 required
               />
             </div>
             
             <div>
-              <Label htmlFor="nome">Nome Completo</Label>
+              <Label htmlFor="nome" className="text-black">Nome Completo</Label>
               <Input
                 id="nome"
                 name="nome"
@@ -151,62 +147,36 @@ const Cadastro = () => {
                 value={formData.nome}
                 onChange={handleChange}
                 placeholder="Digite o nome completo"
+                className="border-black/20 focus:border-yellow-500 focus:ring-yellow-500"
                 required
               />
             </div>
             
             <div>
-              <Label htmlFor="emailWhatsApp">Email/WhatsApp</Label>
+              <Label htmlFor="email" className="text-black">Email</Label>
               <Input
-                id="emailWhatsApp"
-                name="emailWhatsApp"
+                id="email"
+                name="email"
                 type="email"
-                value={formData.emailWhatsApp}
+                value={formData.email}
                 onChange={handleChange}
-                placeholder="Digite o email ou WhatsApp"
+                placeholder="Digite o email"
+                className="border-black/20 focus:border-yellow-500 focus:ring-yellow-500"
                 required
               />
             </div>
             
-            <div>
-              <Label htmlFor="telegramChatId">Telegram Chat ID</Label>
-              <Input
-                id="telegramChatId"
-                name="telegramChatId"
-                type="text"
-                value={formData.telegramChatId}
-                onChange={handleChange}
-                placeholder="Digite o Chat ID do Telegram"
-              />
+            <div className="mt-4 p-3 bg-yellow-100 border border-black/20 rounded-md">
+              <p className="text-xs text-black/80">
+                <strong>Informação:</strong> A senha para login será a matrícula/ID informada acima.
+              </p>
             </div>
             
-            <div>
-              <Label htmlFor="senha">Senha</Label>
-              <Input
-                id="senha"
-                name="senha"
-                type="password"
-                value={formData.senha}
-                onChange={handleChange}
-                placeholder="Digite a senha (min. 6 caracteres)"
-                required
-              />
-            </div>
-            
-            <div>
-              <Label htmlFor="confirmarSenha">Confirmar Senha</Label>
-              <Input
-                id="confirmarSenha"
-                name="confirmarSenha"
-                type="password"
-                value={formData.confirmarSenha}
-                onChange={handleChange}
-                placeholder="Confirme a senha"
-                required
-              />
-            </div>
-            
-            <Button type="submit" className="w-full" disabled={loading}>
+            <Button 
+              type="submit" 
+              className="w-full bg-black hover:bg-black/90 text-yellow-400 font-semibold" 
+              disabled={loading}
+            >
               {loading ? 'Criando conta...' : `Criar conta de ${formData.tipoUsuario}`}
             </Button>
           </form>
@@ -215,7 +185,7 @@ const Cadastro = () => {
             <Button
               variant="link"
               onClick={() => navigate('/login')}
-              className="text-sm"
+              className="text-sm text-black hover:text-black/80"
             >
               Voltar ao login
             </Button>
