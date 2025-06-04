@@ -1,14 +1,12 @@
 
 import React, { useState } from 'react';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { auth, db } from '@/lib/firebase';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/sonner';
 
 const Cadastro = () => {
@@ -48,42 +46,60 @@ const Cadastro = () => {
     try {
       // Usar a matrícula como senha
       const senhaGerada = formData.matricula;
-      const userCredential = await createUserWithEmailAndPassword(auth, formData.email, senhaGerada);
       
-      // Criar documento do usuário no Firestore baseado no tipo
-      const userData = {
-        matricula: formData.matricula,
-        nome: formData.nome,
+      // Criar usuário no Supabase Auth
+      const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formData.email,
-        role: formData.tipoUsuario,
-        criadoEm: new Date(),
-        criadoPor: 'funcionario'
-      };
+        password: senhaGerada
+      });
 
-      if (formData.tipoUsuario === 'aluno') {
-        await setDoc(doc(db, 'alunos', userCredential.user.uid), {
-          ...userData,
-          statusSuspenso: false,
-          fimSuspensao: null
-        });
-      } else {
-        await setDoc(doc(db, 'professores', userCredential.user.uid), userData);
-      }
+      if (authError) throw authError;
 
-      toast.success(`Conta de ${formData.tipoUsuario} criada com sucesso!`);
-      toast.success(`Login: ${formData.email} | Senha: ${formData.matricula}`);
-      
-      // Redirecionar baseado no tipo de usuário
-      if (formData.tipoUsuario === 'aluno') {
-        navigate('/dashboard-aluno');
-      } else {
-        navigate('/dashboard-professor');
+      if (authData.user) {
+        // Criar dados do usuário na tabela apropriada
+        const userData = {
+          user_id: authData.user.id,
+          matricula: formData.matricula,
+          nome: formData.nome,
+          email: formData.email,
+          role: formData.tipoUsuario,
+          criado_em: new Date().toISOString(),
+          criado_por: 'funcionario'
+        };
+
+        if (formData.tipoUsuario === 'aluno') {
+          const { error: alunoError } = await supabase
+            .from('alunos')
+            .insert({
+              ...userData,
+              status_suspenso: false,
+              fim_suspensao: null
+            });
+          
+          if (alunoError) throw alunoError;
+        } else {
+          const { error: professorError } = await supabase
+            .from('professores')
+            .insert(userData);
+          
+          if (professorError) throw professorError;
+        }
+
+        toast.success(`Conta de ${formData.tipoUsuario} criada com sucesso!`);
+        toast.success(`Login: ${formData.email} | Senha: ${formData.matricula}`);
+        
+        // Redirecionar baseado no tipo de usuário
+        if (formData.tipoUsuario === 'aluno') {
+          navigate('/dashboard-aluno');
+        } else {
+          navigate('/dashboard-professor');
+        }
       }
     } catch (error: any) {
       console.error('Erro no cadastro:', error);
-      if (error.code === 'auth/email-already-in-use') {
+      if (error.message?.includes('already registered')) {
         toast.error('Este email já está cadastrado');
-      } else if (error.code === 'auth/weak-password') {
+      } else if (error.message?.includes('Password should be at least')) {
         toast.error('A matrícula deve ter pelo menos 6 caracteres');
       } else {
         toast.error('Erro no cadastro. Tente novamente.');

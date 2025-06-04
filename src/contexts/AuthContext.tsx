@@ -1,8 +1,7 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { User, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
-import { auth, db } from '@/lib/firebase';
+import { User, Session } from '@supabase/supabase-js';
+import { supabase } from '@/integrations/supabase/client';
 
 interface UserData {
   matricula: string;
@@ -38,54 +37,97 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      console.log('Auth state changed:', user);
-      setUser(user);
-      
-      if (user) {
-        try {
-          // Tentar buscar primeiro na coleção de alunos
-          let userDoc = await getDoc(doc(db, 'alunos', user.uid));
-          
-          if (!userDoc.exists()) {
-            // Se não encontrar, buscar na coleção de professores
-            userDoc = await getDoc(doc(db, 'professores', user.uid));
-          }
-          
-          if (userDoc.exists()) {
-            const data = userDoc.data() as UserData;
-            console.log('User data found:', data);
-            setUserData(data);
-          } else {
-            console.error('Dados do usuário não encontrados');
+    // Configurar listener para mudanças de autenticação
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        console.log('Auth state changed:', event, session?.user);
+        setUser(session?.user ?? null);
+        
+        if (session?.user) {
+          try {
+            // Tentar buscar primeiro na tabela de alunos
+            let { data: alunoData, error: alunoError } = await supabase
+              .from('alunos')
+              .select('*')
+              .eq('user_id', session.user.id)
+              .single();
+            
+            if (alunoData && !alunoError) {
+              console.log('User data found (aluno):', alunoData);
+              setUserData({
+                matricula: alunoData.matricula,
+                nome: alunoData.nome,
+                email: alunoData.email,
+                role: 'aluno',
+                statusSuspenso: alunoData.status_suspenso || false,
+                fimSuspensao: alunoData.fim_suspensao ? new Date(alunoData.fim_suspensao) : null
+              });
+            } else {
+              // Se não encontrar nos alunos, buscar nos professores
+              let { data: professorData, error: professorError } = await supabase
+                .from('professores')
+                .select('*')
+                .eq('user_id', session.user.id)
+                .single();
+              
+              if (professorData && !professorError) {
+                console.log('User data found (professor):', professorData);
+                setUserData({
+                  matricula: professorData.matricula,
+                  nome: professorData.nome,
+                  email: professorData.email,
+                  role: 'professor'
+                });
+              } else {
+                console.error('Dados do usuário não encontrados');
+                setUserData(null);
+              }
+            }
+          } catch (error) {
+            console.error('Erro ao buscar dados do usuário:', error);
             setUserData(null);
           }
-        } catch (error) {
-          console.error('Erro ao buscar dados do usuário:', error);
+        } else {
           setUserData(null);
         }
-      } else {
-        setUserData(null);
+        
+        setLoading(false);
       }
-      
-      setLoading(false);
+    );
+
+    // Verificar sessão existente
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log('Initial session:', session?.user);
+      setUser(session?.user ?? null);
+      if (!session) {
+        setLoading(false);
+      }
     });
 
-    return unsubscribe;
+    return () => subscription.unsubscribe();
   }, []);
 
   const signIn = async (email: string, password: string) => {
     console.log('Attempting sign in with:', email);
-    await signInWithEmailAndPassword(auth, email, password);
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password
+    });
+    if (error) throw error;
   };
 
   const signUp = async (email: string, password: string) => {
     console.log('Attempting sign up with:', email);
-    await createUserWithEmailAndPassword(auth, email, password);
+    const { error } = await supabase.auth.signUp({
+      email,
+      password
+    });
+    if (error) throw error;
   };
 
   const logout = async () => {
-    await signOut(auth);
+    const { error } = await supabase.auth.signOut();
+    if (error) throw error;
   };
 
   const value = {
