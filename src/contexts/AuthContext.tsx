@@ -83,7 +83,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           email: alunoData.email,
           role: 'aluno',
           statusSuspenso: alunoData.status === 'suspenso',
-          fimSuspensao: null // Will be implemented later when we add this field
+          fimSuspensao: null
         });
         return;
       }
@@ -109,7 +109,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Se chegou aqui, usuário existe no Auth mas não na tabela
       console.error('Usuário existe no Auth mas não na tabela - removendo do Auth');
       await supabase.auth.signOut();
-      throw new Error('Usuário não está cadastrado');
+      throw new Error('Usuário não cadastrado');
       
     } catch (error) {
       console.error('Erro ao validar usuário na base de dados:', error);
@@ -121,7 +121,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signIn = async (email: string, password: string) => {
     console.log('Attempting sign in with:', email);
     
-    // 1. Tentar fazer login no Supabase Auth
+    // Usar Supabase Auth para login
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password
@@ -129,39 +129,38 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     if (error) {
       console.error('Erro no Auth:', error);
-      throw new Error('Email ou matrícula incorretos');
+      throw new Error('E-mail ou matrícula incorretos');
     }
 
     if (!data.user) {
       throw new Error('Falha na autenticação');
     }
 
-    // 2. Validar se existe registro na tabela (será chamado automaticamente pelo onAuthStateChange)
-    // Se não existir, o validateUserInDatabase fará logout automático e lançará erro
+    // A validação será feita automaticamente pelo onAuthStateChange
   };
 
   const signUp = async (email: string, password: string, userInfo: { nome: string; matricula: string; role: 'aluno' | 'professor' }) => {
     console.log('Attempting sign up with:', email, userInfo);
     
-    // 1. Criar usuário no Supabase Auth primeiro
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email,
-      password
-    });
-
-    if (authError) {
-      console.error('Erro no Auth SignUp:', authError);
-      throw authError;
-    }
-
-    if (!authData.user) {
-      throw new Error('Falha na criação do usuário');
-    }
-
     try {
+      // 1. Criar usuário no Supabase Auth primeiro
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email,
+        password
+      });
+
+      if (authError) {
+        console.error('Erro no Auth SignUp:', authError);
+        throw new Error(`Não foi possível criar usuário: ${authError.message}`);
+      }
+
+      if (!authData.user) {
+        throw new Error('Não foi possível criar usuário: Falha na criação');
+      }
+
       // 2. Criar registro na tabela correspondente usando o ID do Auth
       const userData = {
-        id: authData.user.id, // Usar o UUID do Auth como chave primária
+        id: authData.user.id,
         matricula: userInfo.matricula,
         nome: userInfo.nome,
         email: email,
@@ -179,8 +178,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         if (alunoError) {
           console.error('Erro ao criar aluno:', alunoError);
-          // Se falhar ao criar na tabela, remover do Auth para manter consistência
+          // Remover do Auth se falhar na tabela
           await supabase.auth.admin.deleteUser(authData.user.id);
+          
+          if (alunoError.code === '23505') { // Violação de unicidade
+            throw new Error('E-mail ou matrícula já cadastrado.');
+          }
           throw new Error('Erro ao finalizar cadastro');
         }
       } else {
@@ -190,8 +193,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         if (professorError) {
           console.error('Erro ao criar professor:', professorError);
-          // Se falhar ao criar na tabela, remover do Auth para manter consistência
+          // Remover do Auth se falhar na tabela
           await supabase.auth.admin.deleteUser(authData.user.id);
+          
+          if (professorError.code === '23505') { // Violação de unicidade
+            throw new Error('E-mail ou matrícula já cadastrado.');
+          }
           throw new Error('Erro ao finalizar cadastro');
         }
       }

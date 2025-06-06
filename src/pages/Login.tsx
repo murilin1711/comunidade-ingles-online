@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Label } from "@/components/ui/label";
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/components/ui/sonner';
+import { supabase } from '@/integrations/supabase/client';
 import Logo from '@/components/Logo';
 
 const Login = () => {
@@ -15,7 +16,6 @@ const Login = () => {
     matricula: ''
   });
   const [loading, setLoading] = useState(false);
-  const { signIn } = useAuth();
   const navigate = useNavigate();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -36,20 +36,57 @@ const Login = () => {
     setLoading(true);
 
     try {
-      // Usar a matrícula como senha no processo de login
-      await signIn(formData.email, formData.matricula);
+      // 1. Usar Supabase Auth para login
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email: formData.email,
+        password: formData.matricula
+      });
+
+      if (authError) {
+        console.error('Erro no Auth:', authError);
+        toast.error('E-mail ou matrícula incorretos');
+        return;
+      }
+
+      if (!authData.user) {
+        toast.error('E-mail ou matrícula incorretos');
+        return;
+      }
+
+      // 2. Verificar se é aluno na tabela alunos
+      const { data: alunoData, error: alunoError } = await supabase
+        .from('alunos')
+        .select('*')
+        .eq('id', authData.user.id)
+        .single();
+
+      if (alunoError || !alunoData) {
+        // Se não é aluno, verificar se é professor
+        const { data: professorData, error: professorError } = await supabase
+          .from('professores')
+          .select('*')
+          .eq('id', authData.user.id)
+          .single();
+
+        if (professorError || !professorData) {
+          await supabase.auth.signOut();
+          toast.error('Usuário não cadastrado no sistema');
+          return;
+        }
+
+        // É professor - redirecionar para dashboard professor
+        toast.success('Login realizado com sucesso!');
+        navigate('/dashboard-professor');
+        return;
+      }
+
+      // É aluno - redirecionar para dashboard aluno
       toast.success('Login realizado com sucesso!');
-      // O redirecionamento será feito automaticamente pelo AuthContext
+      navigate('/dashboard-aluno');
+
     } catch (error: any) {
       console.error('Erro no login:', error);
-      
-      if (error.message?.includes('Invalid login credentials')) {
-        toast.error('Email ou matrícula incorretos');
-      } else if (error.message?.includes('não está cadastrado')) {
-        toast.error('Usuário não está cadastrado no sistema');
-      } else {
-        toast.error('Erro no login. Tente novamente.');
-      }
+      toast.error('Erro no login. Tente novamente.');
     } finally {
       setLoading(false);
     }

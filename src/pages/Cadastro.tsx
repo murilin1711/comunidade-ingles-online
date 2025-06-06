@@ -6,8 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/components/ui/sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 const Cadastro = () => {
   const [formData, setFormData] = useState({
@@ -18,7 +18,6 @@ const Cadastro = () => {
   });
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  const { signUp } = useAuth();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
@@ -50,29 +49,98 @@ const Cadastro = () => {
     setLoading(true);
 
     try {
-      // Usar o novo método signUp que segue o fluxo correto
-      await signUp(formData.email, formData.matricula, {
-        nome: formData.nome,
-        matricula: formData.matricula,
-        role: formData.tipoUsuario
+      // 1. Criar usuário no Supabase Auth usando email e matrícula como senha
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.matricula
       });
+
+      if (authError) {
+        console.error('Erro no Auth SignUp:', authError);
+        toast.error(`Não foi possível criar usuário: ${authError.message}`);
+        return;
+      }
+
+      if (!authData.user) {
+        toast.error('Não foi possível criar usuário: Falha na criação');
+        return;
+      }
+
+      console.log('Usuário criado no Auth com ID:', authData.user.id);
+
+      // 2. Criar registro na tabela correspondente usando o ID do Auth
+      const userData = {
+        id: authData.user.id,
+        matricula: formData.matricula,
+        nome: formData.nome,
+        email: formData.email,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+
+      if (formData.tipoUsuario === 'aluno') {
+        const { error: alunoError } = await supabase
+          .from('alunos')
+          .insert({
+            ...userData,
+            status: 'ativo'
+          });
+        
+        if (alunoError) {
+          console.error('Erro ao criar aluno:', alunoError);
+          // Remover do Auth se falhar na tabela
+          await supabase.auth.admin.deleteUser(authData.user.id);
+          
+          if (alunoError.code === '23505') {
+            toast.error('E-mail ou matrícula já cadastrado.');
+          } else {
+            toast.error('Erro ao finalizar cadastro');
+          }
+          return;
+        }
+      } else {
+        const { error: professorError } = await supabase
+          .from('professores')
+          .insert(userData);
+        
+        if (professorError) {
+          console.error('Erro ao criar professor:', professorError);
+          // Remover do Auth se falhar na tabela
+          await supabase.auth.admin.deleteUser(authData.user.id);
+          
+          if (professorError.code === '23505') {
+            toast.error('E-mail ou matrícula já cadastrado.');
+          } else {
+            toast.error('Erro ao finalizar cadastro');
+          }
+          return;
+        }
+      }
 
       toast.success(`Conta de ${formData.tipoUsuario} criada com sucesso!`);
       toast.success(`Login: ${formData.email} | Senha: ${formData.matricula}`);
       
-      // O redirecionamento será feito automaticamente pelo AuthContext
+      // Fazer login automático após o cadastro
+      const { error: loginError } = await supabase.auth.signInWithPassword({
+        email: formData.email,
+        password: formData.matricula
+      });
+
+      if (!loginError) {
+        // Redirecionar baseado no tipo de usuário
+        if (formData.tipoUsuario === 'aluno') {
+          navigate('/dashboard-aluno');
+        } else {
+          navigate('/dashboard-professor');
+        }
+      } else {
+        console.error('Erro no login automático:', loginError);
+        navigate('/login');
+      }
+      
     } catch (error: any) {
       console.error('Erro no cadastro:', error);
-      
-      if (error.message?.includes('already registered') || error.message?.includes('already been registered')) {
-        toast.error('Este email já está cadastrado');
-      } else if (error.message?.includes('Password should be at least')) {
-        toast.error('A matrícula deve ter pelo menos 6 caracteres');
-      } else if (error.message?.includes('finalizar cadastro')) {
-        toast.error('Erro ao finalizar cadastro. Tente novamente.');
-      } else {
-        toast.error('Erro no cadastro. Tente novamente.');
-      }
+      toast.error('Erro no cadastro. Tente novamente.');
     } finally {
       setLoading(false);
     }
