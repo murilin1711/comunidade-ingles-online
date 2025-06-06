@@ -49,7 +49,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             let { data: alunoData, error: alunoError } = await supabase
               .from('alunos')
               .select('*')
-              .eq('user_id', session.user.id)
+              .eq('email', session.user.email)
               .single();
             
             if (alunoData && !alunoError) {
@@ -59,15 +59,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 nome: alunoData.nome,
                 email: alunoData.email,
                 role: 'aluno',
-                statusSuspenso: alunoData.status_suspenso || false,
-                fimSuspensao: alunoData.fim_suspensao ? new Date(alunoData.fim_suspensao) : null
+                statusSuspenso: alunoData.status === 'suspenso',
+                fimSuspensao: null // Will be implemented later when we add this field
               });
             } else {
               // Se não encontrar nos alunos, buscar nos professores
               let { data: professorData, error: professorError } = await supabase
                 .from('professores')
                 .select('*')
-                .eq('user_id', session.user.id)
+                .eq('email', session.user.email)
                 .single();
               
               if (professorData && !professorError) {

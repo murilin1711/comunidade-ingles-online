@@ -11,73 +11,58 @@ export type Database = {
     Tables: {
       alunos: {
         Row: {
-          criado_em: string | null
-          criado_por: string | null
+          created_at: string | null
           email: string
-          fim_suspensao: string | null
           id: string
           matricula: string
           nome: string
-          role: string
-          status_suspenso: boolean | null
-          user_id: string
+          status: string
+          updated_at: string | null
         }
         Insert: {
-          criado_em?: string | null
-          criado_por?: string | null
+          created_at?: string | null
           email: string
-          fim_suspensao?: string | null
           id?: string
           matricula: string
           nome: string
-          role?: string
-          status_suspenso?: boolean | null
-          user_id: string
+          status?: string
+          updated_at?: string | null
         }
         Update: {
-          criado_em?: string | null
-          criado_por?: string | null
+          created_at?: string | null
           email?: string
-          fim_suspensao?: string | null
           id?: string
           matricula?: string
           nome?: string
-          role?: string
-          status_suspenso?: boolean | null
-          user_id?: string
+          status?: string
+          updated_at?: string | null
         }
         Relationships: []
       }
       professores: {
         Row: {
-          criado_em: string | null
-          criado_por: string | null
+          created_at: string | null
           email: string
           id: string
           matricula: string
           nome: string
-          role: string
-          user_id: string
+          updated_at: string | null
         }
         Insert: {
-          criado_em?: string | null
-          criado_por?: string | null
+          created_at?: string | null
           email: string
           id?: string
           matricula: string
           nome: string
-          role?: string
-          user_id: string
+          updated_at?: string | null
         }
         Update: {
-          criado_em?: string | null
-          criado_por?: string | null
+          created_at?: string | null
           email?: string
           id?: string
           matricula?: string
           nome?: string
-          role?: string
-          user_id?: string
+          updated_at?: string | null
         }
         Relationships: []
       }
