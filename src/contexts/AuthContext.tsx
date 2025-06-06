@@ -17,7 +17,7 @@ interface AuthContextType {
   userData: UserData | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string) => Promise<void>;
+  signUp: (email: string, password: string, userData: { nome: string; matricula: string; role: 'aluno' | 'professor' }) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -44,49 +44,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(session?.user ?? null);
         
         if (session?.user) {
-          try {
-            // Tentar buscar primeiro na tabela de alunos
-            let { data: alunoData, error: alunoError } = await supabase
-              .from('alunos')
-              .select('*')
-              .eq('email', session.user.email)
-              .single();
-            
-            if (alunoData && !alunoError) {
-              console.log('User data found (aluno):', alunoData);
-              setUserData({
-                matricula: alunoData.matricula,
-                nome: alunoData.nome,
-                email: alunoData.email,
-                role: 'aluno',
-                statusSuspenso: alunoData.status === 'suspenso',
-                fimSuspensao: null // Will be implemented later when we add this field
-              });
-            } else {
-              // Se não encontrar nos alunos, buscar nos professores
-              let { data: professorData, error: professorError } = await supabase
-                .from('professores')
-                .select('*')
-                .eq('email', session.user.email)
-                .single();
-              
-              if (professorData && !professorError) {
-                console.log('User data found (professor):', professorData);
-                setUserData({
-                  matricula: professorData.matricula,
-                  nome: professorData.nome,
-                  email: professorData.email,
-                  role: 'professor'
-                });
-              } else {
-                console.error('Dados do usuário não encontrados');
-                setUserData(null);
-              }
-            }
-          } catch (error) {
-            console.error('Erro ao buscar dados do usuário:', error);
-            setUserData(null);
-          }
+          // Verificar se existe registro na tabela correspondente
+          await validateUserInDatabase(session.user);
         } else {
           setUserData(null);
         }
@@ -107,22 +66,141 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => subscription.unsubscribe();
   }, []);
 
-  const signIn = async (email: string, password: string) => {
-    console.log('Attempting sign in with:', email);
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password
-    });
-    if (error) throw error;
+  const validateUserInDatabase = async (authUser: User) => {
+    try {
+      // Tentar buscar primeiro na tabela de alunos
+      let { data: alunoData, error: alunoError } = await supabase
+        .from('alunos')
+        .select('*')
+        .eq('id', authUser.id)
+        .single();
+      
+      if (alunoData && !alunoError) {
+        console.log('User data found (aluno):', alunoData);
+        setUserData({
+          matricula: alunoData.matricula,
+          nome: alunoData.nome,
+          email: alunoData.email,
+          role: 'aluno',
+          statusSuspenso: alunoData.status === 'suspenso',
+          fimSuspensao: null // Will be implemented later when we add this field
+        });
+        return;
+      }
+
+      // Se não encontrar nos alunos, buscar nos professores
+      let { data: professorData, error: professorError } = await supabase
+        .from('professores')
+        .select('*')
+        .eq('id', authUser.id)
+        .single();
+      
+      if (professorData && !professorError) {
+        console.log('User data found (professor):', professorData);
+        setUserData({
+          matricula: professorData.matricula,
+          nome: professorData.nome,
+          email: professorData.email,
+          role: 'professor'
+        });
+        return;
+      }
+
+      // Se chegou aqui, usuário existe no Auth mas não na tabela
+      console.error('Usuário existe no Auth mas não na tabela - removendo do Auth');
+      await supabase.auth.signOut();
+      throw new Error('Usuário não está cadastrado');
+      
+    } catch (error) {
+      console.error('Erro ao validar usuário na base de dados:', error);
+      setUserData(null);
+      throw error;
+    }
   };
 
-  const signUp = async (email: string, password: string) => {
-    console.log('Attempting sign up with:', email);
-    const { error } = await supabase.auth.signUp({
+  const signIn = async (email: string, password: string) => {
+    console.log('Attempting sign in with:', email);
+    
+    // 1. Tentar fazer login no Supabase Auth
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password
     });
-    if (error) throw error;
+    
+    if (error) {
+      console.error('Erro no Auth:', error);
+      throw new Error('Email ou matrícula incorretos');
+    }
+
+    if (!data.user) {
+      throw new Error('Falha na autenticação');
+    }
+
+    // 2. Validar se existe registro na tabela (será chamado automaticamente pelo onAuthStateChange)
+    // Se não existir, o validateUserInDatabase fará logout automático e lançará erro
+  };
+
+  const signUp = async (email: string, password: string, userInfo: { nome: string; matricula: string; role: 'aluno' | 'professor' }) => {
+    console.log('Attempting sign up with:', email, userInfo);
+    
+    // 1. Criar usuário no Supabase Auth primeiro
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+      email,
+      password
+    });
+
+    if (authError) {
+      console.error('Erro no Auth SignUp:', authError);
+      throw authError;
+    }
+
+    if (!authData.user) {
+      throw new Error('Falha na criação do usuário');
+    }
+
+    try {
+      // 2. Criar registro na tabela correspondente usando o ID do Auth
+      const userData = {
+        id: authData.user.id, // Usar o UUID do Auth como chave primária
+        matricula: userInfo.matricula,
+        nome: userInfo.nome,
+        email: email,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+
+      if (userInfo.role === 'aluno') {
+        const { error: alunoError } = await supabase
+          .from('alunos')
+          .insert({
+            ...userData,
+            status: 'ativo'
+          });
+        
+        if (alunoError) {
+          console.error('Erro ao criar aluno:', alunoError);
+          // Se falhar ao criar na tabela, remover do Auth para manter consistência
+          await supabase.auth.admin.deleteUser(authData.user.id);
+          throw new Error('Erro ao finalizar cadastro');
+        }
+      } else {
+        const { error: professorError } = await supabase
+          .from('professores')
+          .insert(userData);
+        
+        if (professorError) {
+          console.error('Erro ao criar professor:', professorError);
+          // Se falhar ao criar na tabela, remover do Auth para manter consistência
+          await supabase.auth.admin.deleteUser(authData.user.id);
+          throw new Error('Erro ao finalizar cadastro');
+        }
+      }
+
+      console.log('Cadastro realizado com sucesso');
+    } catch (error) {
+      console.error('Erro no processo de cadastro:', error);
+      throw error;
+    }
   };
 
   const logout = async () => {

@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/components/ui/sonner';
 
 const Cadastro = () => {
@@ -14,10 +14,11 @@ const Cadastro = () => {
     matricula: '',
     nome: '',
     email: '',
-    tipoUsuario: 'aluno'
+    tipoUsuario: 'aluno' as 'aluno' | 'professor'
   });
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const { signUp } = useAuth();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
@@ -29,7 +30,7 @@ const Cadastro = () => {
   const handleTipoUsuarioChange = (value: string) => {
     setFormData({
       ...formData,
-      tipoUsuario: value
+      tipoUsuario: value as 'aluno' | 'professor'
     });
   };
 
@@ -41,66 +42,34 @@ const Cadastro = () => {
       return;
     }
 
+    if (formData.matricula.length < 6) {
+      toast.error('A matrícula deve ter pelo menos 6 caracteres');
+      return;
+    }
+
     setLoading(true);
 
     try {
-      // Usar a matrícula como senha
-      const senhaGerada = formData.matricula;
-      
-      // Criar usuário no Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: formData.email,
-        password: senhaGerada
+      // Usar o novo método signUp que segue o fluxo correto
+      await signUp(formData.email, formData.matricula, {
+        nome: formData.nome,
+        matricula: formData.matricula,
+        role: formData.tipoUsuario
       });
 
-      if (authError) throw authError;
-
-      if (authData.user) {
-        // Criar dados do usuário na tabela apropriada
-        const userData = {
-          user_id: authData.user.id,
-          matricula: formData.matricula,
-          nome: formData.nome,
-          email: formData.email,
-          role: formData.tipoUsuario,
-          criado_em: new Date().toISOString(),
-          criado_por: 'funcionario'
-        };
-
-        if (formData.tipoUsuario === 'aluno') {
-          const { error: alunoError } = await supabase
-            .from('alunos')
-            .insert({
-              ...userData,
-              status_suspenso: false,
-              fim_suspensao: null
-            });
-          
-          if (alunoError) throw alunoError;
-        } else {
-          const { error: professorError } = await supabase
-            .from('professores')
-            .insert(userData);
-          
-          if (professorError) throw professorError;
-        }
-
-        toast.success(`Conta de ${formData.tipoUsuario} criada com sucesso!`);
-        toast.success(`Login: ${formData.email} | Senha: ${formData.matricula}`);
-        
-        // Redirecionar baseado no tipo de usuário
-        if (formData.tipoUsuario === 'aluno') {
-          navigate('/dashboard-aluno');
-        } else {
-          navigate('/dashboard-professor');
-        }
-      }
+      toast.success(`Conta de ${formData.tipoUsuario} criada com sucesso!`);
+      toast.success(`Login: ${formData.email} | Senha: ${formData.matricula}`);
+      
+      // O redirecionamento será feito automaticamente pelo AuthContext
     } catch (error: any) {
       console.error('Erro no cadastro:', error);
-      if (error.message?.includes('already registered')) {
+      
+      if (error.message?.includes('already registered') || error.message?.includes('already been registered')) {
         toast.error('Este email já está cadastrado');
       } else if (error.message?.includes('Password should be at least')) {
         toast.error('A matrícula deve ter pelo menos 6 caracteres');
+      } else if (error.message?.includes('finalizar cadastro')) {
+        toast.error('Erro ao finalizar cadastro. Tente novamente.');
       } else {
         toast.error('Erro no cadastro. Tente novamente.');
       }
@@ -151,6 +120,7 @@ const Cadastro = () => {
                 placeholder={formData.tipoUsuario === 'aluno' ? 'Digite a matrícula' : 'Digite o ID do funcionário'}
                 className="border-black/20 focus:border-yellow-500 focus:ring-yellow-500"
                 required
+                minLength={6}
               />
             </div>
             

@@ -27,14 +27,29 @@ const Login = () => {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!formData.email || !formData.matricula) {
+      toast.error('Todos os campos são obrigatórios');
+      return;
+    }
+
     setLoading(true);
 
     try {
+      // Usar a matrícula como senha no processo de login
       await signIn(formData.email, formData.matricula);
       toast.success('Login realizado com sucesso!');
+      // O redirecionamento será feito automaticamente pelo AuthContext
     } catch (error: any) {
       console.error('Erro no login:', error);
-      toast.error('Email ou matrícula incorretos');
+      
+      if (error.message?.includes('Invalid login credentials')) {
+        toast.error('Email ou matrícula incorretos');
+      } else if (error.message?.includes('não está cadastrado')) {
+        toast.error('Usuário não está cadastrado no sistema');
+      } else {
+        toast.error('Erro no login. Tente novamente.');
+      }
     } finally {
       setLoading(false);
     }
@@ -66,7 +81,7 @@ const Login = () => {
               />
             </div>
             <div>
-              <Label htmlFor="matricula" className="text-black">Matrícula/Senha</Label>
+              <Label htmlFor="matricula" className="text-black">Matrícula</Label>
               <Input
                 id="matricula"
                 name="matricula"
