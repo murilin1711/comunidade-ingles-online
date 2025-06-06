@@ -15,8 +15,8 @@ const Login = () => {
     matricula: ''
   });
   const [loading, setLoading] = useState(false);
-  const navigate = useNavigate();
   const { signIn } = useAuth();
+  const navigate = useNavigate();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
@@ -27,32 +27,14 @@ const Login = () => {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!formData.email || !formData.matricula) {
-      toast.error('Todos os campos são obrigatórios');
-      return;
-    }
-
     setLoading(true);
 
     try {
-      const result = await signIn(formData.email, formData.matricula);
-      
-      if (result.success && result.role) {
-        toast.success('Login realizado com sucesso!');
-        
-        // Redirecionar baseado no role
-        if (result.role === 'aluno') {
-          navigate('/dashboard-aluno');
-        } else {
-          navigate('/dashboard-professor');
-        }
-      } else {
-        toast.error(result.error || 'Erro no login');
-      }
+      await signIn(formData.email, formData.matricula);
+      toast.success('Login realizado com sucesso!');
     } catch (error: any) {
       console.error('Erro no login:', error);
-      toast.error('Erro no login. Tente novamente.');
+      toast.error('Email ou matrícula incorretos');
     } finally {
       setLoading(false);
     }
@@ -84,7 +66,7 @@ const Login = () => {
               />
             </div>
             <div>
-              <Label htmlFor="matricula" className="text-black">Matrícula</Label>
+              <Label htmlFor="matricula" className="text-black">Matrícula/Senha</Label>
               <Input
                 id="matricula"
                 name="matricula"

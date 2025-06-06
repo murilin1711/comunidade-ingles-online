@@ -1,8 +1,10 @@
 
 import React, { useState, useEffect } from 'react';
+import { collection, query, orderBy, onSnapshot, doc, getDoc } from 'firebase/firestore';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { db } from '@/lib/firebase';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/components/ui/sonner';
 import { format } from 'date-fns';
@@ -11,57 +13,86 @@ import Logo from '@/components/Logo';
 
 interface Aula {
   id: string;
-  data: Date;
+  data: any;
   horario: string;
   linkMeet: string;
   capacidade: number;
 }
 
+interface AlunoData {
+  statusSuspenso: boolean;
+  fimSuspensao: any;
+  nome: string;
+}
+
 const DashboardAluno = () => {
   const [aulas, setAulas] = useState<Aula[]>([]);
+  const [alunoData, setAlunoData] = useState<AlunoData | null>(null);
   const [loading, setLoading] = useState(false);
-  const { user, userData, logout } = useAuth();
+  const { user, logout } = useAuth();
 
   useEffect(() => {
-    if (!user || !userData) return;
+    if (!user) return;
 
-    // Por enquanto, vamos usar dados mockados até implementarmos as aulas no Supabase
-    const aulasMockadas: Aula[] = [
-      {
-        id: '1',
-        data: new Date('2025-06-10T10:00:00'),
-        horario: '10:00 - 11:00',
-        linkMeet: 'https://meet.google.com/abc-def-ghi',
-        capacidade: 6
-      },
-      {
-        id: '2',
-        data: new Date('2025-06-12T14:00:00'),
-        horario: '14:00 - 15:00',
-        linkMeet: 'https://meet.google.com/jkl-mno-pqr',
-        capacidade: 6
+    // Buscar dados do aluno
+    const fetchAlunoData = async () => {
+      const alunoDoc = await getDoc(doc(db, 'alunos', user.uid));
+      if (alunoDoc.exists()) {
+        setAlunoData(alunoDoc.data() as AlunoData);
       }
-    ];
-    
-    setAulas(aulasMockadas);
-  }, [user, userData]);
+    };
+
+    fetchAlunoData();
+
+    // Escutar aulas em tempo real
+    const q = query(collection(db, 'aulas'), orderBy('data', 'asc'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const aulasData = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      } as Aula));
+      setAulas(aulasData);
+    });
+
+    return () => unsubscribe();
+  }, [user]);
 
   const isAlunoSuspenso = () => {
-    if (!userData) return false;
-    return userData.statusSuspenso || false;
+    if (!alunoData) return false;
+    if (!alunoData.statusSuspenso) return false;
+    
+    if (alunoData.fimSuspensao) {
+      const agora = new Date();
+      const fimSuspensao = alunoData.fimSuspensao.toDate();
+      return fimSuspensao > agora;
+    }
+    
+    return false;
   };
 
   const handleInscricao = async (aulaId: string, tipoInscricao: 'confirmado' | 'espera') => {
-    if (!user || !userData) return;
+    if (!user || !alunoData) return;
 
     setLoading(true);
     try {
-      // Aqui implementaremos a lógica de inscrição no Supabase futuramente
-      console.log('Inscrição solicitada:', { aulaId, tipoInscricao, usuario: userData.matricula });
+      // Aqui seria chamada a Cloud Function
+      const response = await fetch('https://your-region-your-project.cloudfunctions.net/inscrever', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${await user.getIdToken()}`
+        },
+        body: JSON.stringify({
+          matricula: user.uid,
+          aulaId: aulaId
+        })
+      });
+
+      const result = await response.json();
       
-      if (tipoInscricao === 'confirmado') {
+      if (result.status === 'confirmado') {
         toast.success('Inscrição confirmada!');
-      } else if (tipoInscricao === 'espera') {
+      } else if (result.status === 'espera') {
         toast.success('Você foi adicionado à lista de espera!');
       }
     } catch (error) {
@@ -73,7 +104,7 @@ const DashboardAluno = () => {
   };
 
   const getVagasRestantes = (aula: Aula) => {
-    // Por enquanto retorna capacidade total, será calculado via query futuramente
+    // Por enquanto retorna capacidade total, seria calculado via query
     return aula.capacidade;
   };
 
@@ -85,8 +116,8 @@ const DashboardAluno = () => {
             <Logo size="md" />
             <div>
               <h1 className="text-3xl font-bold text-black">Dashboard do Aluno</h1>
-              {userData && (
-                <p className="text-black/70">Bem-vindo, {userData.nome}!</p>
+              {alunoData && (
+                <p className="text-black/70">Bem-vindo, {alunoData.nome}!</p>
               )}
             </div>
           </div>
@@ -99,14 +130,12 @@ const DashboardAluno = () => {
           </Button>
         </div>
 
-        {isAlunoSuspenso() && (
+        {isAlunoSuspenso() && alunoData?.fimSuspensao && (
           <Card className="mb-6 border-red-500 bg-red-50">
             <CardContent className="pt-6">
               <div className="text-red-800">
-                <strong>Você está suspenso</strong>
-                {userData?.fimSuspensao && (
-                  <span> até: {format(userData.fimSuspensao, 'dd/MM/yyyy', { locale: ptBR })}</span>
-                )}
+                <strong>Você está suspenso até:</strong>{' '}
+                {format(alunoData.fimSuspensao.toDate(), 'dd/MM/yyyy', { locale: ptBR })}
               </div>
             </CardContent>
           </Card>
@@ -117,6 +146,7 @@ const DashboardAluno = () => {
           
           {aulas.map((aula) => {
             const vagasRestantes = getVagasRestantes(aula);
+            const dataAula = aula.data.toDate();
             const suspenso = isAlunoSuspenso();
             
             return (
@@ -125,7 +155,7 @@ const DashboardAluno = () => {
                   <div className="flex justify-between items-start">
                     <div>
                       <CardTitle className="text-lg text-black">
-                        {format(aula.data, 'dd/MM/yyyy', { locale: ptBR })} - {aula.horario}
+                        {format(dataAula, 'dd/MM/yyyy', { locale: ptBR })} - {aula.horario}
                       </CardTitle>
                       <p className="text-sm text-black/60 mt-1">
                         Link: <a href={aula.linkMeet} target="_blank" rel="noopener noreferrer" className="text-yellow-600 hover:underline">

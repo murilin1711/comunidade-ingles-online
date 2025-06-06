@@ -1,24 +1,25 @@
 
 import React, { useState } from 'react';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { doc, setDoc } from 'firebase/firestore';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { auth, db } from '@/lib/firebase';
 import { toast } from '@/components/ui/sonner';
-import { useAuth } from '@/contexts/AuthContext';
 
 const Cadastro = () => {
   const [formData, setFormData] = useState({
     matricula: '',
     nome: '',
     email: '',
-    tipoUsuario: 'aluno' as 'aluno' | 'professor'
+    tipoUsuario: 'aluno'
   });
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  const { signUpAluno, signUpProfessor, signIn } = useAuth();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
@@ -30,7 +31,7 @@ const Cadastro = () => {
   const handleTipoUsuarioChange = (value: string) => {
     setFormData({
       ...formData,
-      tipoUsuario: value as 'aluno' | 'professor'
+      tipoUsuario: value
     });
   };
 
@@ -42,44 +43,51 @@ const Cadastro = () => {
       return;
     }
 
-    if (formData.matricula.length < 6) {
-      toast.error('A matrícula deve ter pelo menos 6 caracteres');
-      return;
-    }
-
     setLoading(true);
 
     try {
-      // Executar cadastro baseado no tipo de usuário
-      if (formData.tipoUsuario === 'aluno') {
-        await signUpAluno(formData.email, formData.nome, formData.matricula);
-        toast.success('Conta de aluno criada com sucesso!');
-      } else {
-        await signUpProfessor(formData.email, formData.nome, formData.matricula);
-        toast.success('Conta de professor criada com sucesso!');
-      }
+      // Usar a matrícula como senha
+      const senhaGerada = formData.matricula;
+      const userCredential = await createUserWithEmailAndPassword(auth, formData.email, senhaGerada);
       
+      // Criar documento do usuário no Firestore baseado no tipo
+      const userData = {
+        matricula: formData.matricula,
+        nome: formData.nome,
+        email: formData.email,
+        role: formData.tipoUsuario,
+        criadoEm: new Date(),
+        criadoPor: 'funcionario'
+      };
+
+      if (formData.tipoUsuario === 'aluno') {
+        await setDoc(doc(db, 'alunos', userCredential.user.uid), {
+          ...userData,
+          statusSuspenso: false,
+          fimSuspensao: null
+        });
+      } else {
+        await setDoc(doc(db, 'professores', userCredential.user.uid), userData);
+      }
+
+      toast.success(`Conta de ${formData.tipoUsuario} criada com sucesso!`);
       toast.success(`Login: ${formData.email} | Senha: ${formData.matricula}`);
       
-      // Fazer login automático após o cadastro
-      const loginResult = await signIn(formData.email, formData.matricula);
-      
-      if (loginResult.success && loginResult.role) {
-        // Redirecionar baseado no tipo de usuário
-        if (loginResult.role === 'aluno') {
-          navigate('/dashboard-aluno');
-        } else {
-          navigate('/dashboard-professor');
-        }
+      // Redirecionar baseado no tipo de usuário
+      if (formData.tipoUsuario === 'aluno') {
+        navigate('/dashboard-aluno');
       } else {
-        console.error('Erro no login automático:', loginResult.error);
-        toast.error('Cadastro realizado, mas erro no login automático. Tente fazer login manualmente.');
-        navigate('/login');
+        navigate('/dashboard-professor');
       }
-      
     } catch (error: any) {
       console.error('Erro no cadastro:', error);
-      toast.error(error.message || 'Erro no cadastro. Tente novamente.');
+      if (error.code === 'auth/email-already-in-use') {
+        toast.error('Este email já está cadastrado');
+      } else if (error.code === 'auth/weak-password') {
+        toast.error('A matrícula deve ter pelo menos 6 caracteres');
+      } else {
+        toast.error('Erro no cadastro. Tente novamente.');
+      }
     } finally {
       setLoading(false);
     }
@@ -115,14 +123,16 @@ const Cadastro = () => {
             </div>
             
             <div>
-              <Label htmlFor="email" className="text-black">Email</Label>
+              <Label htmlFor="matricula" className="text-black">
+                {formData.tipoUsuario === 'aluno' ? 'Matrícula' : 'ID Funcionário'}
+              </Label>
               <Input
-                id="email"
-                name="email"
-                type="email"
-                value={formData.email}
+                id="matricula"
+                name="matricula"
+                type="text"
+                value={formData.matricula}
                 onChange={handleChange}
-                placeholder="Digite o email"
+                placeholder={formData.tipoUsuario === 'aluno' ? 'Digite a matrícula' : 'Digite o ID do funcionário'}
                 className="border-black/20 focus:border-yellow-500 focus:ring-yellow-500"
                 required
               />
@@ -143,19 +153,16 @@ const Cadastro = () => {
             </div>
             
             <div>
-              <Label htmlFor="matricula" className="text-black">
-                {formData.tipoUsuario === 'aluno' ? 'Matrícula' : 'ID Funcionário'}
-              </Label>
+              <Label htmlFor="email" className="text-black">Email</Label>
               <Input
-                id="matricula"
-                name="matricula"
-                type="text"
-                value={formData.matricula}
+                id="email"
+                name="email"
+                type="email"
+                value={formData.email}
                 onChange={handleChange}
-                placeholder={formData.tipoUsuario === 'aluno' ? 'Digite a matrícula' : 'Digite o ID do funcionário'}
+                placeholder="Digite o email"
                 className="border-black/20 focus:border-yellow-500 focus:ring-yellow-500"
                 required
-                minLength={6}
               />
             </div>
             

@@ -9,63 +9,7 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      alunos: {
-        Row: {
-          created_at: string | null
-          email: string
-          id: string
-          matricula: string
-          nome: string
-          status: string
-          updated_at: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          email: string
-          id?: string
-          matricula: string
-          nome: string
-          status?: string
-          updated_at?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          email?: string
-          id?: string
-          matricula?: string
-          nome?: string
-          status?: string
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
-      professores: {
-        Row: {
-          created_at: string | null
-          email: string
-          id: string
-          matricula: string
-          nome: string
-          updated_at: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          email: string
-          id?: string
-          matricula: string
-          nome: string
-          updated_at?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          email?: string
-          id?: string
-          matricula?: string
-          nome?: string
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
+      [_ in never]: never
     }
     Views: {
       [_ in never]: never
