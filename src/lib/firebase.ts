@@ -4,14 +4,14 @@ import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 
-// Firebase configuration - using Supabase project details
+// Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyC8Q7K5K5K5K5K5K5K5K5K5K5K5K5K5K5K",
-  authDomain: "qovgcumafbauktwthurx.firebaseapp.com",
-  projectId: "qovgcumafbauktwthurx",
-  storageBucket: "qovgcumafbauktwthurx.appspot.com",
+  apiKey: "your-api-key",
+  authDomain: "your-project.firebaseapp.com",
+  projectId: "your-project-id",
+  storageBucket: "your-project.appspot.com",
   messagingSenderId: "123456789",
-  appId: "1:123456789:web:abcdef123456"
+  appId: "your-app-id"
 };
 
 // Initialize Firebase

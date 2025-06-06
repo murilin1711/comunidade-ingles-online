@@ -18,8 +18,6 @@ const queryClient = new QueryClient();
 const ProtectedRoute = ({ children, requiredRole }: { children: React.ReactNode, requiredRole?: string }) => {
   const { user, userData, loading } = useAuth();
   
-  console.log('ProtectedRoute - user:', user, 'userData:', userData, 'loading:', loading);
-  
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center">Carregando...</div>;
   }
@@ -39,8 +37,6 @@ const ProtectedRoute = ({ children, requiredRole }: { children: React.ReactNode,
 
 const PublicRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, userData, loading } = useAuth();
-  
-  console.log('PublicRoute - user:', user, 'userData:', userData, 'loading:', loading);
   
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center">Carregando...</div>;
