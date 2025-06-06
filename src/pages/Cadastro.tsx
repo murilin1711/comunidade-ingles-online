@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { toast } from '@/components/ui/sonner';
-import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 const Cadastro = () => {
   const [formData, setFormData] = useState({
@@ -18,6 +18,7 @@ const Cadastro = () => {
   });
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const { signUpAluno, signUpProfessor, signIn } = useAuth();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
@@ -49,98 +50,36 @@ const Cadastro = () => {
     setLoading(true);
 
     try {
-      // 1. Criar usuário no Supabase Auth usando email e matrícula como senha
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: formData.email,
-        password: formData.matricula
-      });
-
-      if (authError) {
-        console.error('Erro no Auth SignUp:', authError);
-        toast.error(`Não foi possível criar usuário: ${authError.message}`);
-        return;
-      }
-
-      if (!authData.user) {
-        toast.error('Não foi possível criar usuário: Falha na criação');
-        return;
-      }
-
-      console.log('Usuário criado no Auth com ID:', authData.user.id);
-
-      // 2. Criar registro na tabela correspondente usando o ID do Auth
-      const userData = {
-        id: authData.user.id,
-        matricula: formData.matricula,
-        nome: formData.nome,
-        email: formData.email,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      };
-
+      // Executar cadastro baseado no tipo de usuário
       if (formData.tipoUsuario === 'aluno') {
-        const { error: alunoError } = await supabase
-          .from('alunos')
-          .insert({
-            ...userData,
-            status: 'ativo'
-          });
-        
-        if (alunoError) {
-          console.error('Erro ao criar aluno:', alunoError);
-          // Remover do Auth se falhar na tabela
-          await supabase.auth.admin.deleteUser(authData.user.id);
-          
-          if (alunoError.code === '23505') {
-            toast.error('E-mail ou matrícula já cadastrado.');
-          } else {
-            toast.error('Erro ao finalizar cadastro');
-          }
-          return;
-        }
+        await signUpAluno(formData.email, formData.nome, formData.matricula);
+        toast.success('Conta de aluno criada com sucesso!');
       } else {
-        const { error: professorError } = await supabase
-          .from('professores')
-          .insert(userData);
-        
-        if (professorError) {
-          console.error('Erro ao criar professor:', professorError);
-          // Remover do Auth se falhar na tabela
-          await supabase.auth.admin.deleteUser(authData.user.id);
-          
-          if (professorError.code === '23505') {
-            toast.error('E-mail ou matrícula já cadastrado.');
-          } else {
-            toast.error('Erro ao finalizar cadastro');
-          }
-          return;
-        }
+        await signUpProfessor(formData.email, formData.nome, formData.matricula);
+        toast.success('Conta de professor criada com sucesso!');
       }
-
-      toast.success(`Conta de ${formData.tipoUsuario} criada com sucesso!`);
+      
       toast.success(`Login: ${formData.email} | Senha: ${formData.matricula}`);
       
       // Fazer login automático após o cadastro
-      const { error: loginError } = await supabase.auth.signInWithPassword({
-        email: formData.email,
-        password: formData.matricula
-      });
-
-      if (!loginError) {
+      const loginResult = await signIn(formData.email, formData.matricula);
+      
+      if (loginResult.success && loginResult.role) {
         // Redirecionar baseado no tipo de usuário
-        if (formData.tipoUsuario === 'aluno') {
+        if (loginResult.role === 'aluno') {
           navigate('/dashboard-aluno');
         } else {
           navigate('/dashboard-professor');
         }
       } else {
-        console.error('Erro no login automático:', loginError);
+        console.error('Erro no login automático:', loginResult.error);
+        toast.error('Cadastro realizado, mas erro no login automático. Tente fazer login manualmente.');
         navigate('/login');
       }
       
     } catch (error: any) {
       console.error('Erro no cadastro:', error);
-      toast.error('Erro no cadastro. Tente novamente.');
+      toast.error(error.message || 'Erro no cadastro. Tente novamente.');
     } finally {
       setLoading(false);
     }
@@ -176,19 +115,16 @@ const Cadastro = () => {
             </div>
             
             <div>
-              <Label htmlFor="matricula" className="text-black">
-                {formData.tipoUsuario === 'aluno' ? 'Matrícula' : 'ID Funcionário'}
-              </Label>
+              <Label htmlFor="email" className="text-black">Email</Label>
               <Input
-                id="matricula"
-                name="matricula"
-                type="text"
-                value={formData.matricula}
+                id="email"
+                name="email"
+                type="email"
+                value={formData.email}
                 onChange={handleChange}
-                placeholder={formData.tipoUsuario === 'aluno' ? 'Digite a matrícula' : 'Digite o ID do funcionário'}
+                placeholder="Digite o email"
                 className="border-black/20 focus:border-yellow-500 focus:ring-yellow-500"
                 required
-                minLength={6}
               />
             </div>
             
@@ -207,16 +143,19 @@ const Cadastro = () => {
             </div>
             
             <div>
-              <Label htmlFor="email" className="text-black">Email</Label>
+              <Label htmlFor="matricula" className="text-black">
+                {formData.tipoUsuario === 'aluno' ? 'Matrícula' : 'ID Funcionário'}
+              </Label>
               <Input
-                id="email"
-                name="email"
-                type="email"
-                value={formData.email}
+                id="matricula"
+                name="matricula"
+                type="text"
+                value={formData.matricula}
                 onChange={handleChange}
-                placeholder="Digite o email"
+                placeholder={formData.tipoUsuario === 'aluno' ? 'Digite a matrícula' : 'Digite o ID do funcionário'}
                 className="border-black/20 focus:border-yellow-500 focus:ring-yellow-500"
                 required
+                minLength={6}
               />
             </div>
             

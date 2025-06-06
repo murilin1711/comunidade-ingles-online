@@ -7,7 +7,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Label } from "@/components/ui/label";
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/components/ui/sonner';
-import { supabase } from '@/integrations/supabase/client';
 import Logo from '@/components/Logo';
 
 const Login = () => {
@@ -17,6 +16,7 @@ const Login = () => {
   });
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const { signIn } = useAuth();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
@@ -36,54 +36,20 @@ const Login = () => {
     setLoading(true);
 
     try {
-      // 1. Usar Supabase Auth para login
-      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-        email: formData.email,
-        password: formData.matricula
-      });
-
-      if (authError) {
-        console.error('Erro no Auth:', authError);
-        toast.error('E-mail ou matrícula incorretos');
-        return;
-      }
-
-      if (!authData.user) {
-        toast.error('E-mail ou matrícula incorretos');
-        return;
-      }
-
-      // 2. Verificar se é aluno na tabela alunos
-      const { data: alunoData, error: alunoError } = await supabase
-        .from('alunos')
-        .select('*')
-        .eq('id', authData.user.id)
-        .single();
-
-      if (alunoError || !alunoData) {
-        // Se não é aluno, verificar se é professor
-        const { data: professorData, error: professorError } = await supabase
-          .from('professores')
-          .select('*')
-          .eq('id', authData.user.id)
-          .single();
-
-        if (professorError || !professorData) {
-          await supabase.auth.signOut();
-          toast.error('Usuário não cadastrado no sistema');
-          return;
-        }
-
-        // É professor - redirecionar para dashboard professor
+      const result = await signIn(formData.email, formData.matricula);
+      
+      if (result.success && result.role) {
         toast.success('Login realizado com sucesso!');
-        navigate('/dashboard-professor');
-        return;
+        
+        // Redirecionar baseado no role
+        if (result.role === 'aluno') {
+          navigate('/dashboard-aluno');
+        } else {
+          navigate('/dashboard-professor');
+        }
+      } else {
+        toast.error(result.error || 'Erro no login');
       }
-
-      // É aluno - redirecionar para dashboard aluno
-      toast.success('Login realizado com sucesso!');
-      navigate('/dashboard-aluno');
-
     } catch (error: any) {
       console.error('Erro no login:', error);
       toast.error('Erro no login. Tente novamente.');
