@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,6 +7,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/components/ui/sonner';
 import { supabase } from '@/integrations/supabase/client';
 import Logo from '@/components/Logo';
+import CriarAulaModal from '@/components/CriarAulaModal';
+import GerenciarAulas from '@/components/GerenciarAulas';
 
 interface Aula {
   id: string;
@@ -15,6 +16,7 @@ interface Aula {
   horario: string;
   link_meet: string;
   capacidade: number;
+  ativa: boolean;
 }
 
 interface Inscricao {
@@ -245,6 +247,10 @@ const DashboardProfessor = () => {
             </div>
           </div>
           <div className="flex gap-2">
+            <CriarAulaModal 
+              professorId={user?.id || ''} 
+              onAulaCriada={fetchAulas} 
+            />
             <Button 
               onClick={() => window.location.href = '/agendamento'} 
               variant="outline"
@@ -262,9 +268,13 @@ const DashboardProfessor = () => {
           </div>
         </div>
 
+        <div className="grid gap-6 mb-6">
+          <GerenciarAulas aulas={aulas} onAulaAtualizada={fetchAulas} />
+        </div>
+
         <Card className="mb-6 border-black/20">
           <CardHeader>
-            <CardTitle className="text-black">Selecionar Aula</CardTitle>
+            <CardTitle className="text-black">Selecionar Aula para Gerenciar Inscrições</CardTitle>
           </CardHeader>
           <CardContent>
             <Select value={aulaSelecionada} onValueChange={setAulaSelecionada}>

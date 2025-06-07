@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -105,11 +104,26 @@ const DashboardAluno = () => {
     return false;
   };
 
+  const isInscricaoAberta = () => {
+    const agora = new Date();
+    const diaSemana = agora.getDay(); // 0 = domingo, 1 = segunda, etc.
+    const hora = agora.getHours();
+    const minutos = agora.getMinutes();
+    
+    // Verificar se é segunda-feira (dia 1) às 12:30
+    return diaSemana === 1 && hora === 12 && minutos >= 30;
+  };
+
   const handleInscricao = async (aulaId: string) => {
     if (!user || !userData) return;
 
     if (isAlunoSuspenso()) {
       toast.error('Você está suspenso e não pode se inscrever em aulas');
+      return;
+    }
+
+    if (!isInscricaoAberta()) {
+      toast.error('As inscrições só abrem às segundas-feiras às 12:30');
       return;
     }
 
@@ -227,6 +241,10 @@ const DashboardAluno = () => {
     }
   };
 
+  const podeVerLink = (aula: Aula) => {
+    return aula.minha_inscricao?.status === 'confirmado';
+  };
+
   if (!userData) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-yellow-50 to-yellow-100 flex items-center justify-center">
@@ -248,6 +266,8 @@ const DashboardAluno = () => {
       </div>
     );
   }
+
+  const inscricaoAberta = isInscricaoAberta();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-yellow-50 to-yellow-100 p-4">
@@ -283,6 +303,19 @@ const DashboardAluno = () => {
           </Card>
         )}
 
+        {!inscricaoAberta && (
+          <Card className="mb-6 border-blue-500 bg-blue-50">
+            <CardContent className="pt-6">
+              <div className="text-blue-800">
+                <strong>Período de inscrições:</strong> As inscrições abrem toda segunda-feira às 12:30.
+                <p className="text-sm mt-1">
+                  Você poderá se inscrever nas aulas disponíveis apenas durante este horário.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         <div className="grid gap-4">
           <h2 className="text-xl font-semibold mb-4 text-black">Aulas Disponíveis</h2>
           
@@ -298,6 +331,7 @@ const DashboardAluno = () => {
             const vagasRestantes = aula.capacidade - aula.inscricoes_count;
             const suspenso = isAlunoSuspenso();
             const jaInscrito = !!aula.minha_inscricao;
+            const podeSeInscrever = inscricaoAberta && !suspenso && !jaInscrito;
             
             return (
               <Card key={aula.id} className="border-black/20 shadow-md">
@@ -310,16 +344,23 @@ const DashboardAluno = () => {
                       <p className="text-sm text-black/60 mt-1">
                         Professor: {aula.professor?.nome}
                       </p>
-                      <p className="text-sm text-black/60">
-                        Link: <a 
-                          href={aula.link_meet} 
-                          target="_blank" 
-                          rel="noopener noreferrer" 
-                          className="text-yellow-600 hover:underline"
-                        >
-                          {aula.link_meet}
-                        </a>
-                      </p>
+                      {podeVerLink(aula) && (
+                        <p className="text-sm text-black/60">
+                          Link: <a 
+                            href={aula.link_meet} 
+                            target="_blank" 
+                            rel="noopener noreferrer" 
+                            className="text-yellow-600 hover:underline"
+                          >
+                            {aula.link_meet}
+                          </a>
+                        </p>
+                      )}
+                      {!podeVerLink(aula) && aula.minha_inscricao && (
+                        <p className="text-sm text-orange-600">
+                          Link disponível apenas para alunos confirmados
+                        </p>
+                      )}
                     </div>
                     <div className="flex flex-col items-end gap-2">
                       <Badge 
@@ -344,10 +385,14 @@ const DashboardAluno = () => {
                       </Button>
                     ) : suspenso ? (
                       <Badge variant="destructive">Suspenso</Badge>
+                    ) : !inscricaoAberta ? (
+                      <Badge variant="secondary" className="bg-blue-100 text-blue-800">
+                        Inscrições fechadas
+                      </Badge>
                     ) : (
                       <Button 
                         onClick={() => handleInscricao(aula.id)}
-                        disabled={loading}
+                        disabled={loading || !podeSeInscrever}
                         className="bg-yellow-500 hover:bg-yellow-600 text-black font-semibold"
                       >
                         {vagasRestantes > 0 ? 'Inscrever-me' : 'Entrar na Lista de Espera'}
