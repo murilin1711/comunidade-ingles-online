@@ -10,10 +10,19 @@ import Logo from '@/components/Logo';
 
 interface Aula {
   id: string;
-  data: string;
+  dia_semana: number;
   horario: string;
-  linkMeet: string;
+  link_meet: string;
   capacidade: number;
+  professor: {
+    nome: string;
+  };
+  inscricoes_count: number;
+  minha_inscricao?: {
+    id: string;
+    status: 'confirmado' | 'espera';
+    posicao_espera?: number;
+  };
 }
 
 const DashboardAluno = () => {
@@ -21,14 +30,65 @@ const DashboardAluno = () => {
   const [loading, setLoading] = useState(false);
   const { user, userData, logout } = useAuth();
 
+  const diasSemana = [
+    'Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'
+  ];
+
   useEffect(() => {
-    if (user && userData) {
-      console.log('User authenticated:', user.id, userData);
-      // TODO: Fetch aulas from Supabase when aulas table is created
-      // For now, we'll use empty array
-      setAulas([]);
+    if (user && userData?.role === 'aluno') {
+      fetchAulas();
     }
   }, [user, userData]);
+
+  const fetchAulas = async () => {
+    try {
+      // Buscar todas as aulas ativas
+      const { data: aulasData, error: aulasError } = await supabase
+        .from('aulas')
+        .select(`
+          *,
+          professor:professores!aulas_professor_id_fkey(nome)
+        `)
+        .eq('ativa', true)
+        .order('dia_semana', { ascending: true })
+        .order('horario', { ascending: true });
+
+      if (aulasError) throw aulasError;
+
+      // Para cada aula, buscar o número de inscrições confirmadas e a inscrição do usuário atual
+      const aulasComInscricoes = await Promise.all(
+        (aulasData || []).map(async (aula) => {
+          // Contar inscrições confirmadas
+          const { count: inscricoesCount } = await supabase
+            .from('inscricoes')
+            .select('*', { count: 'exact' })
+            .eq('aula_id', aula.id)
+            .eq('status', 'confirmado')
+            .is('cancelamento', null);
+
+          // Buscar inscrição do usuário atual
+          const { data: minhaInscricao } = await supabase
+            .from('inscricoes')
+            .select('id, status, posicao_espera')
+            .eq('aula_id', aula.id)
+            .eq('aluno_id', user?.id)
+            .is('cancelamento', null)
+            .maybeSingle();
+
+          return {
+            ...aula,
+            inscricoes_count: inscricoesCount || 0,
+            minha_inscricao: minhaInscricao || undefined
+          };
+        })
+      );
+
+      setAulas(aulasComInscricoes);
+    } catch (error) {
+      console.error('Erro ao buscar aulas:', error);
+      toast.error('Erro ao carregar aulas');
+    }
+  };
 
   const isAlunoSuspenso = () => {
     if (!userData || userData.role !== 'aluno') return false;
@@ -42,30 +102,126 @@ const DashboardAluno = () => {
     return false;
   };
 
-  const handleInscricao = async (aulaId: string, tipoInscricao: 'confirmado' | 'espera') => {
+  const handleInscricao = async (aulaId: string) => {
     if (!user || !userData) return;
+
+    if (isAlunoSuspenso()) {
+      toast.error('Você está suspenso e não pode se inscrever em aulas');
+      return;
+    }
 
     setLoading(true);
     try {
-      console.log('Attempting to register for aula:', aulaId, tipoInscricao);
+      const aula = aulas.find(a => a.id === aulaId);
+      if (!aula) throw new Error('Aula não encontrada');
+
+      const status = aula.inscricoes_count < aula.capacidade ? 'confirmado' : 'espera';
       
-      // TODO: Implement actual inscription logic when aulas table and cloud functions are ready
+      const { error } = await supabase
+        .from('inscricoes')
+        .insert({
+          aula_id: aulaId,
+          aluno_id: user.id,
+          status: status
+        });
+
+      if (error) throw error;
+
       toast.success(
-        tipoInscricao === 'confirmado' 
+        status === 'confirmado' 
           ? 'Inscrição confirmada!' 
           : 'Você foi adicionado à lista de espera!'
       );
-    } catch (error) {
+
+      await fetchAulas();
+    } catch (error: any) {
       console.error('Erro na inscrição:', error);
-      toast.error('Erro ao fazer inscrição. Tente novamente.');
+      
+      if (error.code === '23505') { // Unique constraint violation
+        toast.error('Você já está inscrito nesta aula');
+      } else {
+        toast.error('Erro ao fazer inscrição. Tente novamente.');
+      }
     } finally {
       setLoading(false);
     }
   };
 
-  const getVagasRestantes = (aula: Aula) => {
-    // TODO: Calculate actual remaining spots when inscription system is implemented
-    return aula.capacidade;
+  const handleCancelarInscricao = async (aulaId: string) => {
+    if (!user || !userData) return;
+
+    setLoading(true);
+    try {
+      const aula = aulas.find(a => a.id === aulaId);
+      if (!aula?.minha_inscricao) return;
+
+      const agora = new Date();
+      const dataAula = new Date();
+      // Assumindo que a aula é hoje para este exemplo - em produção você teria a data específica
+      const diferencaHoras = (dataAula.getTime() - agora.getTime()) / (1000 * 60 * 60);
+
+      let motivo = 'cancelamento_4h';
+      if (diferencaHoras < 4) {
+        motivo = 'cancelamento_menos_4h';
+        
+        // Aplicar suspensão de 1 semana
+        const { error: suspensaoError } = await supabase.rpc('aplicar_suspensao', {
+          aluno_uuid: user.id,
+          motivo_param: motivo,
+          semanas_param: 1
+        });
+
+        if (suspensaoError) throw suspensaoError;
+      }
+
+      // Marcar cancelamento
+      const { error } = await supabase
+        .from('inscricoes')
+        .update({
+          cancelamento: agora.toISOString(),
+          motivo_cancelamento: motivo,
+          atualizado_em: agora.toISOString()
+        })
+        .eq('id', aula.minha_inscricao.id);
+
+      if (error) throw error;
+
+      // Promover aluno da lista de espera se necessário
+      if (aula.minha_inscricao.status === 'confirmado') {
+        const { error: promoverError } = await supabase.rpc('promover_lista_espera', {
+          aula_uuid: aulaId
+        });
+
+        if (promoverError) {
+          console.error('Erro ao promover lista de espera:', promoverError);
+        }
+      }
+
+      toast.success(
+        diferencaHoras < 4 
+          ? 'Inscrição cancelada. Você foi suspenso por 1 semana por cancelar com menos de 4h de antecedência.' 
+          : 'Inscrição cancelada com sucesso!'
+      );
+
+      await fetchAulas();
+    } catch (error) {
+      console.error('Erro ao cancelar inscrição:', error);
+      toast.error('Erro ao cancelar inscrição. Tente novamente.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getStatusInscricao = (aula: Aula) => {
+    if (!aula.minha_inscricao) return null;
+    
+    if (aula.minha_inscricao.status === 'confirmado') {
+      return <Badge className="bg-green-500 text-white">Confirmado</Badge>;
+    } else {
+      return <Badge variant="secondary" className="bg-orange-100 text-orange-800">
+        Lista de espera
+      </Badge>;
+    }
   };
 
   if (!userData) {
@@ -74,6 +230,17 @@ const DashboardAluno = () => {
         <div className="text-center">
           <h2 className="text-xl font-semibold text-black mb-2">Carregando dados do usuário...</h2>
           <p className="text-black/60">Aguarde enquanto buscamos suas informações.</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (userData.role !== 'aluno') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-yellow-50 to-yellow-100 flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-xl font-semibold text-black mb-2">Acesso negado</h2>
+          <p className="text-black/60">Esta área é restrita para alunos.</p>
         </div>
       </div>
     );
@@ -105,6 +272,9 @@ const DashboardAluno = () => {
               <div className="text-red-800">
                 <strong>Você está suspenso até:</strong>{' '}
                 {userData.fimSuspensao.toLocaleDateString('pt-BR')}
+                <p className="text-sm mt-1">
+                  Durante o período de suspensão, você não pode se inscrever em novas aulas.
+                </p>
               </div>
             </CardContent>
           </Card>
@@ -117,16 +287,14 @@ const DashboardAluno = () => {
             <Card className="border-black/20">
               <CardContent className="pt-6 text-center">
                 <p className="text-black/60">Nenhuma aula disponível no momento.</p>
-                <p className="text-black/40 text-sm mt-2">
-                  O sistema de aulas será implementado em breve.
-                </p>
               </CardContent>
             </Card>
           )}
 
           {aulas.map((aula) => {
-            const vagasRestantes = getVagasRestantes(aula);
+            const vagasRestantes = aula.capacidade - aula.inscricoes_count;
             const suspenso = isAlunoSuspenso();
+            const jaInscrito = !!aula.minha_inscricao;
             
             return (
               <Card key={aula.id} className="border-black/20 shadow-md">
@@ -134,42 +302,52 @@ const DashboardAluno = () => {
                   <div className="flex justify-between items-start">
                     <div>
                       <CardTitle className="text-lg text-black">
-                        {new Date(aula.data).toLocaleDateString('pt-BR')} - {aula.horario}
+                        {diasSemana[aula.dia_semana]} - {aula.horario}
                       </CardTitle>
                       <p className="text-sm text-black/60 mt-1">
-                        Link: <a href={aula.linkMeet} target="_blank" rel="noopener noreferrer" className="text-yellow-600 hover:underline">
-                          {aula.linkMeet}
+                        Professor: {aula.professor?.nome}
+                      </p>
+                      <p className="text-sm text-black/60">
+                        Link: <a 
+                          href={aula.link_meet} 
+                          target="_blank" 
+                          rel="noopener noreferrer" 
+                          className="text-yellow-600 hover:underline"
+                        >
+                          {aula.link_meet}
                         </a>
                       </p>
                     </div>
-                    <Badge 
-                      variant={vagasRestantes > 0 ? "default" : "secondary"}
-                      className={vagasRestantes > 0 ? "bg-yellow-500 text-black" : "bg-black/10 text-black"}
-                    >
-                      {vagasRestantes > 0 ? `${vagasRestantes} vagas` : 'Lotado'}
-                    </Badge>
+                    <div className="flex flex-col items-end gap-2">
+                      <Badge 
+                        variant={vagasRestantes > 0 ? "default" : "secondary"}
+                        className={vagasRestantes > 0 ? "bg-yellow-500 text-black" : "bg-black/10 text-black"}
+                      >
+                        {vagasRestantes > 0 ? `${vagasRestantes} vagas` : 'Lotado'}
+                      </Badge>
+                      {getStatusInscricao(aula)}
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent>
                   <div className="flex gap-2">
-                    {suspenso ? (
-                      <Badge variant="destructive">Suspenso</Badge>
-                    ) : vagasRestantes > 0 ? (
+                    {jaInscrito ? (
                       <Button 
-                        onClick={() => handleInscricao(aula.id, 'confirmado')}
+                        variant="destructive"
+                        onClick={() => handleCancelarInscricao(aula.id)}
+                        disabled={loading}
+                      >
+                        Cancelar Inscrição
+                      </Button>
+                    ) : suspenso ? (
+                      <Badge variant="destructive">Suspenso</Badge>
+                    ) : (
+                      <Button 
+                        onClick={() => handleInscricao(aula.id)}
                         disabled={loading}
                         className="bg-yellow-500 hover:bg-yellow-600 text-black font-semibold"
                       >
-                        Inscrever-me
-                      </Button>
-                    ) : (
-                      <Button 
-                        variant="outline"
-                        onClick={() => handleInscricao(aula.id, 'espera')}
-                        disabled={loading}
-                        className="border-black/30 text-black hover:bg-yellow-50"
-                      >
-                        Entrar na Lista de Espera
+                        {vagasRestantes > 0 ? 'Inscrever-me' : 'Entrar na Lista de Espera'}
                       </Button>
                     )}
                   </div>

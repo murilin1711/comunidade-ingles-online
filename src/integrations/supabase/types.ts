@@ -51,6 +51,107 @@ export type Database = {
         }
         Relationships: []
       }
+      aulas: {
+        Row: {
+          ativa: boolean
+          atualizado_em: string
+          capacidade: number
+          criado_em: string
+          dia_semana: number
+          horario: string
+          id: string
+          link_meet: string
+          professor_id: string
+        }
+        Insert: {
+          ativa?: boolean
+          atualizado_em?: string
+          capacidade?: number
+          criado_em?: string
+          dia_semana: number
+          horario: string
+          id?: string
+          link_meet: string
+          professor_id: string
+        }
+        Update: {
+          ativa?: boolean
+          atualizado_em?: string
+          capacidade?: number
+          criado_em?: string
+          dia_semana?: number
+          horario?: string
+          id?: string
+          link_meet?: string
+          professor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "aulas_professor_id_fkey"
+            columns: ["professor_id"]
+            isOneToOne: false
+            referencedRelation: "professores"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      inscricoes: {
+        Row: {
+          aluno_id: string
+          atualizado_em: string
+          aula_id: string
+          cancelamento: string | null
+          criado_em: string
+          data_inscricao: string
+          id: string
+          motivo_cancelamento: string | null
+          posicao_espera: number | null
+          presenca: boolean | null
+          status: string
+        }
+        Insert: {
+          aluno_id: string
+          atualizado_em?: string
+          aula_id: string
+          cancelamento?: string | null
+          criado_em?: string
+          data_inscricao?: string
+          id?: string
+          motivo_cancelamento?: string | null
+          posicao_espera?: number | null
+          presenca?: boolean | null
+          status?: string
+        }
+        Update: {
+          aluno_id?: string
+          atualizado_em?: string
+          aula_id?: string
+          cancelamento?: string | null
+          criado_em?: string
+          data_inscricao?: string
+          id?: string
+          motivo_cancelamento?: string | null
+          posicao_espera?: number | null
+          presenca?: boolean | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inscricoes_aluno_id_fkey"
+            columns: ["aluno_id"]
+            isOneToOne: false
+            referencedRelation: "alunos"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "inscricoes_aula_id_fkey"
+            columns: ["aula_id"]
+            isOneToOne: false
+            referencedRelation: "aulas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       professores: {
         Row: {
           atualizado_em: string
@@ -87,12 +188,64 @@ export type Database = {
         }
         Relationships: []
       }
+      suspensoes: {
+        Row: {
+          aluno_id: string
+          ativa: boolean
+          criado_em: string
+          data_fim: string
+          data_inicio: string
+          id: string
+          motivo: string
+          semanas: number
+        }
+        Insert: {
+          aluno_id: string
+          ativa?: boolean
+          criado_em?: string
+          data_fim: string
+          data_inicio?: string
+          id?: string
+          motivo: string
+          semanas: number
+        }
+        Update: {
+          aluno_id?: string
+          ativa?: boolean
+          criado_em?: string
+          data_fim?: string
+          data_inicio?: string
+          id?: string
+          motivo?: string
+          semanas?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "suspensoes_aluno_id_fkey"
+            columns: ["aluno_id"]
+            isOneToOne: false
+            referencedRelation: "alunos"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      aplicar_suspensao: {
+        Args: {
+          aluno_uuid: string
+          motivo_param: string
+          semanas_param: number
+        }
+        Returns: undefined
+      }
+      promover_lista_espera: {
+        Args: { aula_uuid: string }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
