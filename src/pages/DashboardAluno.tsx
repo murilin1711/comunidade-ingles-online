@@ -1,100 +1,60 @@
 
 import React, { useState, useEffect } from 'react';
-import { collection, query, orderBy, onSnapshot, doc, getDoc } from 'firebase/firestore';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { db } from '@/lib/firebase';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/components/ui/sonner';
-import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { supabase } from '@/integrations/supabase/client';
 import Logo from '@/components/Logo';
 
 interface Aula {
   id: string;
-  data: any;
+  data: string;
   horario: string;
   linkMeet: string;
   capacidade: number;
 }
 
-interface AlunoData {
-  statusSuspenso: boolean;
-  fimSuspensao: any;
-  nome: string;
-}
-
 const DashboardAluno = () => {
   const [aulas, setAulas] = useState<Aula[]>([]);
-  const [alunoData, setAlunoData] = useState<AlunoData | null>(null);
   const [loading, setLoading] = useState(false);
-  const { user, logout } = useAuth();
+  const { user, userData, logout } = useAuth();
 
   useEffect(() => {
-    if (!user) return;
-
-    // Buscar dados do aluno
-    const fetchAlunoData = async () => {
-      const alunoDoc = await getDoc(doc(db, 'alunos', user.uid));
-      if (alunoDoc.exists()) {
-        setAlunoData(alunoDoc.data() as AlunoData);
-      }
-    };
-
-    fetchAlunoData();
-
-    // Escutar aulas em tempo real
-    const q = query(collection(db, 'aulas'), orderBy('data', 'asc'));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const aulasData = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      } as Aula));
-      setAulas(aulasData);
-    });
-
-    return () => unsubscribe();
-  }, [user]);
+    if (user && userData) {
+      console.log('User authenticated:', user.id, userData);
+      // TODO: Fetch aulas from Supabase when aulas table is created
+      // For now, we'll use empty array
+      setAulas([]);
+    }
+  }, [user, userData]);
 
   const isAlunoSuspenso = () => {
-    if (!alunoData) return false;
-    if (!alunoData.statusSuspenso) return false;
+    if (!userData || userData.role !== 'aluno') return false;
+    if (!userData.statusSuspenso) return false;
     
-    if (alunoData.fimSuspensao) {
+    if (userData.fimSuspensao) {
       const agora = new Date();
-      const fimSuspensao = alunoData.fimSuspensao.toDate();
-      return fimSuspensao > agora;
+      return userData.fimSuspensao > agora;
     }
     
     return false;
   };
 
   const handleInscricao = async (aulaId: string, tipoInscricao: 'confirmado' | 'espera') => {
-    if (!user || !alunoData) return;
+    if (!user || !userData) return;
 
     setLoading(true);
     try {
-      // Aqui seria chamada a Cloud Function
-      const response = await fetch('https://your-region-your-project.cloudfunctions.net/inscrever', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${await user.getIdToken()}`
-        },
-        body: JSON.stringify({
-          matricula: user.uid,
-          aulaId: aulaId
-        })
-      });
-
-      const result = await response.json();
+      console.log('Attempting to register for aula:', aulaId, tipoInscricao);
       
-      if (result.status === 'confirmado') {
-        toast.success('Inscrição confirmada!');
-      } else if (result.status === 'espera') {
-        toast.success('Você foi adicionado à lista de espera!');
-      }
+      // TODO: Implement actual inscription logic when aulas table and cloud functions are ready
+      toast.success(
+        tipoInscricao === 'confirmado' 
+          ? 'Inscrição confirmada!' 
+          : 'Você foi adicionado à lista de espera!'
+      );
     } catch (error) {
       console.error('Erro na inscrição:', error);
       toast.error('Erro ao fazer inscrição. Tente novamente.');
@@ -104,9 +64,20 @@ const DashboardAluno = () => {
   };
 
   const getVagasRestantes = (aula: Aula) => {
-    // Por enquanto retorna capacidade total, seria calculado via query
+    // TODO: Calculate actual remaining spots when inscription system is implemented
     return aula.capacidade;
   };
+
+  if (!userData) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-yellow-50 to-yellow-100 flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-xl font-semibold text-black mb-2">Carregando dados do usuário...</h2>
+          <p className="text-black/60">Aguarde enquanto buscamos suas informações.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-yellow-50 to-yellow-100 p-4">
@@ -116,9 +87,7 @@ const DashboardAluno = () => {
             <Logo size="md" />
             <div>
               <h1 className="text-3xl font-bold text-black">Dashboard do Aluno</h1>
-              {alunoData && (
-                <p className="text-black/70">Bem-vindo, {alunoData.nome}!</p>
-              )}
+              <p className="text-black/70">Bem-vindo, {userData.nome}!</p>
             </div>
           </div>
           <Button 
@@ -130,12 +99,12 @@ const DashboardAluno = () => {
           </Button>
         </div>
 
-        {isAlunoSuspenso() && alunoData?.fimSuspensao && (
+        {isAlunoSuspenso() && userData.fimSuspensao && (
           <Card className="mb-6 border-red-500 bg-red-50">
             <CardContent className="pt-6">
               <div className="text-red-800">
                 <strong>Você está suspenso até:</strong>{' '}
-                {format(alunoData.fimSuspensao.toDate(), 'dd/MM/yyyy', { locale: ptBR })}
+                {userData.fimSuspensao.toLocaleDateString('pt-BR')}
               </div>
             </CardContent>
           </Card>
@@ -144,9 +113,19 @@ const DashboardAluno = () => {
         <div className="grid gap-4">
           <h2 className="text-xl font-semibold mb-4 text-black">Aulas Disponíveis</h2>
           
+          {aulas.length === 0 && (
+            <Card className="border-black/20">
+              <CardContent className="pt-6 text-center">
+                <p className="text-black/60">Nenhuma aula disponível no momento.</p>
+                <p className="text-black/40 text-sm mt-2">
+                  O sistema de aulas será implementado em breve.
+                </p>
+              </CardContent>
+            </Card>
+          )}
+
           {aulas.map((aula) => {
             const vagasRestantes = getVagasRestantes(aula);
-            const dataAula = aula.data.toDate();
             const suspenso = isAlunoSuspenso();
             
             return (
@@ -155,7 +134,7 @@ const DashboardAluno = () => {
                   <div className="flex justify-between items-start">
                     <div>
                       <CardTitle className="text-lg text-black">
-                        {format(dataAula, 'dd/MM/yyyy', { locale: ptBR })} - {aula.horario}
+                        {new Date(aula.data).toLocaleDateString('pt-BR')} - {aula.horario}
                       </CardTitle>
                       <p className="text-sm text-black/60 mt-1">
                         Link: <a href={aula.linkMeet} target="_blank" rel="noopener noreferrer" className="text-yellow-600 hover:underline">
@@ -198,14 +177,6 @@ const DashboardAluno = () => {
               </Card>
             );
           })}
-          
-          {aulas.length === 0 && (
-            <Card className="border-black/20">
-              <CardContent className="pt-6 text-center">
-                <p className="text-black/60">Nenhuma aula disponível no momento.</p>
-              </CardContent>
-            </Card>
-          )}
         </div>
       </div>
     </div>

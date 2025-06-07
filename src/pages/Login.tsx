@@ -30,11 +30,23 @@ const Login = () => {
     setLoading(true);
 
     try {
+      console.log('Attempting login with:', formData.email, formData.matricula);
       await signIn(formData.email, formData.matricula);
       toast.success('Login realizado com sucesso!');
     } catch (error: any) {
       console.error('Erro no login:', error);
-      toast.error('Email ou matrícula incorretos');
+      
+      let errorMessage = 'Email ou matrícula incorretos';
+      
+      if (error.message?.includes('Invalid login credentials')) {
+        errorMessage = 'Email ou matrícula incorretos';
+      } else if (error.message?.includes('Email not confirmed')) {
+        errorMessage = 'Confirme seu email antes de fazer login';
+      } else if (error.message?.includes('Too many requests')) {
+        errorMessage = 'Muitas tentativas. Tente novamente em alguns minutos';
+      }
+      
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }

@@ -1,14 +1,12 @@
 
 import React, { useState } from 'react';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { auth, db } from '@/lib/firebase';
+import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/components/ui/sonner';
 
 const Cadastro = () => {
@@ -16,9 +14,11 @@ const Cadastro = () => {
     matricula: '',
     nome: '',
     email: '',
-    tipoUsuario: 'aluno'
+    telefone: '',
+    tipoUsuario: 'aluno' as 'aluno' | 'professor'
   });
   const [loading, setLoading] = useState(false);
+  const { signUp } = useAuth();
   const navigate = useNavigate();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -31,14 +31,14 @@ const Cadastro = () => {
   const handleTipoUsuarioChange = (value: string) => {
     setFormData({
       ...formData,
-      tipoUsuario: value
+      tipoUsuario: value as 'aluno' | 'professor'
     });
   };
 
   const handleCadastro = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.email || !formData.matricula || !formData.nome) {
+    if (!formData.email || !formData.matricula || !formData.nome || !formData.telefone) {
       toast.error('Todos os campos são obrigatórios');
       return;
     }
@@ -46,48 +46,42 @@ const Cadastro = () => {
     setLoading(true);
 
     try {
-      // Usar a matrícula como senha
-      const senhaGerada = formData.matricula;
-      const userCredential = await createUserWithEmailAndPassword(auth, formData.email, senhaGerada);
+      console.log('Creating user with data:', formData);
       
-      // Criar documento do usuário no Firestore baseado no tipo
-      const userData = {
+      // Use matrícula as password for Supabase Auth
+      await signUp(formData.email, formData.matricula, {
         matricula: formData.matricula,
         nome: formData.nome,
         email: formData.email,
-        role: formData.tipoUsuario,
-        criadoEm: new Date(),
-        criadoPor: 'funcionario'
-      };
-
-      if (formData.tipoUsuario === 'aluno') {
-        await setDoc(doc(db, 'alunos', userCredential.user.uid), {
-          ...userData,
-          statusSuspenso: false,
-          fimSuspensao: null
-        });
-      } else {
-        await setDoc(doc(db, 'professores', userCredential.user.uid), userData);
-      }
+        telefone: formData.telefone,
+        role: formData.tipoUsuario
+      });
 
       toast.success(`Conta de ${formData.tipoUsuario} criada com sucesso!`);
       toast.success(`Login: ${formData.email} | Senha: ${formData.matricula}`);
       
-      // Redirecionar baseado no tipo de usuário
-      if (formData.tipoUsuario === 'aluno') {
-        navigate('/dashboard-aluno');
-      } else {
-        navigate('/dashboard-professor');
-      }
+      // Note: The user will be automatically redirected by the App component
+      // based on their role once authentication is complete
     } catch (error: any) {
       console.error('Erro no cadastro:', error);
-      if (error.code === 'auth/email-already-in-use') {
-        toast.error('Este email já está cadastrado');
-      } else if (error.code === 'auth/weak-password') {
-        toast.error('A matrícula deve ter pelo menos 6 caracteres');
-      } else {
-        toast.error('Erro no cadastro. Tente novamente.');
+      
+      let errorMessage = 'Erro no cadastro. Tente novamente.';
+      
+      if (error.message?.includes('User already registered')) {
+        errorMessage = 'Este email já está cadastrado';
+      } else if (error.message?.includes('Password should be at least 6 characters')) {
+        errorMessage = 'A matrícula deve ter pelo menos 6 caracteres';
+      } else if (error.message?.includes('Unable to validate email address')) {
+        errorMessage = 'Email inválido';
+      } else if (error.message?.includes('duplicate key value violates unique constraint')) {
+        if (error.message.includes('matricula')) {
+          errorMessage = 'Esta matrícula já está cadastrada';
+        } else if (error.message.includes('email')) {
+          errorMessage = 'Este email já está cadastrado';
+        }
       }
+      
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -161,6 +155,20 @@ const Cadastro = () => {
                 value={formData.email}
                 onChange={handleChange}
                 placeholder="Digite o email"
+                className="border-black/20 focus:border-yellow-500 focus:ring-yellow-500"
+                required
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="telefone" className="text-black">Telefone</Label>
+              <Input
+                id="telefone"
+                name="telefone"
+                type="tel"
+                value={formData.telefone}
+                onChange={handleChange}
+                placeholder="Digite o telefone"
                 className="border-black/20 focus:border-yellow-500 focus:ring-yellow-500"
                 required
               />
