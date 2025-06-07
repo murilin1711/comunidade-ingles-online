@@ -102,8 +102,15 @@ const DashboardProfessor = () => {
 
       if (esperaError) throw esperaError;
 
-      setConfirmados(confirmadosData || []);
-      setListaEspera(esperaData || []);
+      // Type assertion to fix TypeScript errors
+      setConfirmados((confirmadosData || []).map(item => ({
+        ...item,
+        status: item.status as 'confirmado' | 'espera'
+      })));
+      setListaEspera((esperaData || []).map(item => ({
+        ...item,
+        status: item.status as 'confirmado' | 'espera'
+      })));
     } catch (error) {
       console.error('Erro ao buscar inscrições:', error);
       toast.error('Erro ao carregar inscrições');

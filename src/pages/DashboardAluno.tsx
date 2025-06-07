@@ -78,7 +78,10 @@ const DashboardAluno = () => {
           return {
             ...aula,
             inscricoes_count: inscricoesCount || 0,
-            minha_inscricao: minhaInscricao || undefined
+            minha_inscricao: minhaInscricao ? {
+              ...minhaInscricao,
+              status: minhaInscricao.status as 'confirmado' | 'espera'
+            } : undefined
           };
         })
       );
