@@ -9,6 +9,8 @@ import { supabase } from '@/integrations/supabase/client';
 import Logo from '@/components/Logo';
 import CriarAulaModal from '@/components/CriarAulaModal';
 import GerenciarAulas from '@/components/GerenciarAulas';
+import LiberarAulasSemanaModal from '@/components/LiberarAulasSemanaModal';
+import EstatisticasPresenca from '@/components/EstatisticasPresenca';
 
 interface Aula {
   id: string;
@@ -17,6 +19,7 @@ interface Aula {
   link_meet: string;
   capacidade: number;
   ativa: boolean;
+  professor_nome?: string;
 }
 
 interface Inscricao {
@@ -247,6 +250,10 @@ const DashboardProfessor = () => {
             </div>
           </div>
           <div className="flex gap-2">
+            <LiberarAulasSemanaModal 
+              professorId={user?.id || ''} 
+              onAulasLiberadas={fetchAulas} 
+            />
             <CriarAulaModal 
               professorId={user?.id || ''} 
               onAulaCriada={fetchAulas} 
@@ -269,6 +276,7 @@ const DashboardProfessor = () => {
         </div>
 
         <div className="grid gap-6 mb-6">
+          <EstatisticasPresenca professorId={user?.id || ''} />
           <GerenciarAulas aulas={aulas} onAulaAtualizada={fetchAulas} />
         </div>
 
@@ -285,6 +293,7 @@ const DashboardProfessor = () => {
                 {aulas.map((aula) => (
                   <SelectItem key={aula.id} value={aula.id}>
                     {diasSemana[aula.dia_semana]} - {aula.horario}
+                    {aula.professor_nome && ` (${aula.professor_nome})`}
                   </SelectItem>
                 ))}
               </SelectContent>

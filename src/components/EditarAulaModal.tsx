@@ -15,6 +15,7 @@ interface Aula {
   link_meet: string;
   capacidade: number;
   ativa: boolean;
+  professor_nome?: string;
 }
 
 interface EditarAulaModalProps {
@@ -29,7 +30,8 @@ const EditarAulaModal = ({ aula, open, onOpenChange, onAulaAtualizada }: EditarA
   const [formData, setFormData] = useState({
     dia_semana: '',
     horario: '',
-    link_meet: ''
+    link_meet: '',
+    professor_nome: ''
   });
 
   const diasSemana = [
@@ -47,7 +49,8 @@ const EditarAulaModal = ({ aula, open, onOpenChange, onAulaAtualizada }: EditarA
       setFormData({
         dia_semana: aula.dia_semana.toString(),
         horario: aula.horario,
-        link_meet: aula.link_meet
+        link_meet: aula.link_meet,
+        professor_nome: aula.professor_nome || ''
       });
     }
   }, [aula, open]);
@@ -55,7 +58,7 @@ const EditarAulaModal = ({ aula, open, onOpenChange, onAulaAtualizada }: EditarA
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!aula || !formData.dia_semana || !formData.horario || !formData.link_meet) {
+    if (!aula || !formData.dia_semana || !formData.horario || !formData.link_meet || !formData.professor_nome) {
       toast.error('Preencha todos os campos obrigatórios');
       return;
     }
@@ -68,6 +71,7 @@ const EditarAulaModal = ({ aula, open, onOpenChange, onAulaAtualizada }: EditarA
           dia_semana: parseInt(formData.dia_semana),
           horario: formData.horario,
           link_meet: formData.link_meet,
+          professor_nome: formData.professor_nome,
           atualizado_em: new Date().toISOString()
         })
         .eq('id', aula.id);
@@ -96,6 +100,18 @@ const EditarAulaModal = ({ aula, open, onOpenChange, onAulaAtualizada }: EditarA
           <DialogTitle className="text-black">Editar Aula</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="professor_nome" className="text-black">Nome do Professor</Label>
+            <Input
+              id="professor_nome"
+              type="text"
+              value={formData.professor_nome}
+              onChange={(e) => setFormData(prev => ({ ...prev, professor_nome: e.target.value }))}
+              className="border-black/20 focus:border-yellow-500 focus:ring-yellow-500"
+              placeholder="Nome do professor"
+            />
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor="dia_semana" className="text-black">Dia da Semana</Label>
             <Select 

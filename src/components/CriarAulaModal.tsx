@@ -20,7 +20,8 @@ const CriarAulaModal = ({ professorId, onAulaCriada }: CriarAulaModalProps) => {
   const [formData, setFormData] = useState({
     dia_semana: '',
     horario: '',
-    link_meet: ''
+    link_meet: '',
+    professor_nome: ''
   });
 
   const diasSemana = [
@@ -36,7 +37,7 @@ const CriarAulaModal = ({ professorId, onAulaCriada }: CriarAulaModalProps) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.dia_semana || !formData.horario || !formData.link_meet) {
+    if (!formData.dia_semana || !formData.horario || !formData.link_meet || !formData.professor_nome) {
       toast.error('Preencha todos os campos obrigatórios');
       return;
     }
@@ -50,6 +51,7 @@ const CriarAulaModal = ({ professorId, onAulaCriada }: CriarAulaModalProps) => {
           dia_semana: parseInt(formData.dia_semana),
           horario: formData.horario,
           link_meet: formData.link_meet,
+          professor_nome: formData.professor_nome,
           capacidade: 6,
           ativa: true
         });
@@ -59,7 +61,7 @@ const CriarAulaModal = ({ professorId, onAulaCriada }: CriarAulaModalProps) => {
       const diaSelecionado = diasSemana.find(d => d.value === formData.dia_semana)?.label;
       toast.success(`Aula criada com sucesso para ${diaSelecionado} às ${formData.horario}`);
       
-      setFormData({ dia_semana: '', horario: '', link_meet: '' });
+      setFormData({ dia_semana: '', horario: '', link_meet: '', professor_nome: '' });
       setOpen(false);
       onAulaCriada();
     } catch (error) {
@@ -83,6 +85,18 @@ const CriarAulaModal = ({ professorId, onAulaCriada }: CriarAulaModalProps) => {
           <DialogTitle className="text-black">Criar Nova Aula</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="professor_nome" className="text-black">Nome do Professor</Label>
+            <Input
+              id="professor_nome"
+              type="text"
+              value={formData.professor_nome}
+              onChange={(e) => setFormData(prev => ({ ...prev, professor_nome: e.target.value }))}
+              className="border-black/20 focus:border-yellow-500 focus:ring-yellow-500"
+              placeholder="Nome do professor"
+            />
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor="dia_semana" className="text-black">Dia da Semana</Label>
             <Select 

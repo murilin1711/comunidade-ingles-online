@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/components/ui/sonner';
 import { supabase } from '@/integrations/supabase/client';
 import Logo from '@/components/Logo';
+import AvisarFaltaModal from '@/components/AvisarFaltaModal';
 
 interface Aula {
   id: string;
@@ -376,13 +377,23 @@ const DashboardAluno = () => {
                 <CardContent>
                   <div className="flex gap-2">
                     {jaInscrito ? (
-                      <Button 
-                        variant="destructive"
-                        onClick={() => handleCancelarInscricao(aula.id)}
-                        disabled={loading}
-                      >
-                        Cancelar Inscrição
-                      </Button>
+                      <>
+                        <Button 
+                          variant="destructive"
+                          onClick={() => handleCancelarInscricao(aula.id)}
+                          disabled={loading}
+                        >
+                          Cancelar Inscrição
+                        </Button>
+                        {aula.minha_inscricao?.status === 'confirmado' && (
+                          <AvisarFaltaModal
+                            aulaId={aula.id}
+                            alunoId={user?.id || ''}
+                            diaSemana={diasSemana[aula.dia_semana]}
+                            horario={aula.horario}
+                          />
+                        )}
+                      </>
                     ) : suspenso ? (
                       <Badge variant="destructive">Suspenso</Badge>
                     ) : !inscricaoAberta ? (
