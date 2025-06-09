@@ -62,6 +62,7 @@ export type Database = {
           id: string
           link_meet: string
           professor_id: string
+          professor_nome: string | null
         }
         Insert: {
           ativa?: boolean
@@ -73,6 +74,7 @@ export type Database = {
           id?: string
           link_meet: string
           professor_id: string
+          professor_nome?: string | null
         }
         Update: {
           ativa?: boolean
@@ -84,6 +86,7 @@ export type Database = {
           id?: string
           link_meet?: string
           professor_id?: string
+          professor_nome?: string | null
         }
         Relationships: [
           {
@@ -151,6 +154,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      participacoes: {
+        Row: {
+          aluno_id: string
+          aula_id: string
+          criado_em: string
+          data_aula: string
+          id: string
+          presente: boolean
+        }
+        Insert: {
+          aluno_id: string
+          aula_id: string
+          criado_em?: string
+          data_aula: string
+          id?: string
+          presente?: boolean
+        }
+        Update: {
+          aluno_id?: string
+          aula_id?: string
+          criado_em?: string
+          data_aula?: string
+          id?: string
+          presente?: boolean
+        }
+        Relationships: []
       }
       professores: {
         Row: {
@@ -241,6 +271,10 @@ export type Database = {
           semanas_param: number
         }
         Returns: undefined
+      }
+      contar_participacoes: {
+        Args: { aluno_uuid: string; dias_param: number }
+        Returns: number
       }
       promover_lista_espera: {
         Args: { aula_uuid: string }
