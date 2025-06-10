@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -107,13 +108,8 @@ const DashboardAluno = () => {
   };
 
   const isInscricaoAberta = () => {
-    const agora = new Date();
-    const diaSemana = agora.getDay(); // 0 = domingo, 1 = segunda, etc.
-    const hora = agora.getHours();
-    const minutos = agora.getMinutes();
-    
-    // Verificar se é segunda-feira (dia 1) às 12:30
-    return diaSemana === 1 && hora === 12 && minutos >= 30;
+    // Sempre permitir inscrições se houver aulas ativas
+    return aulas.length > 0;
   };
 
   const handleInscricao = async (aulaId: string) => {
@@ -121,11 +117,6 @@ const DashboardAluno = () => {
 
     if (isAlunoSuspenso()) {
       toast.error('Você está suspenso e não pode se inscrever em aulas');
-      return;
-    }
-
-    if (!isInscricaoAberta()) {
-      toast.error('As inscrições só abrem às segundas-feiras às 12:30');
       return;
     }
 
@@ -291,24 +282,19 @@ const DashboardAluno = () => {
           </Button>
         </div>
 
-        {/* Comunicado sobre suspensões */}
-        <Card className="mb-6 border-orange-500 bg-orange-50">
-          <CardHeader>
-            <CardTitle className="text-orange-800">⚠️ Regras de Suspensão</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-orange-800 space-y-2">
-              <p><strong>Falta com aviso ≥ 4h antes da aula:</strong> 2 semanas de suspensão</p>
-              <p><strong>Falta com aviso &lt; 4h antes da aula:</strong> 3 semanas de suspensão</p>
-              <p><strong>Falta sem aviso:</strong> 4 semanas de suspensão</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Estatísticas de presença */}
-        <div className="mb-6">
-          <EstatisticasPresencaAluno alunoId={user?.id || ''} />
-        </div>
+        {/* Período de inscrições e aulas disponíveis */}
+        {!inscricaoAberta && (
+          <Card className="mb-6 border-blue-500 bg-blue-50">
+            <CardContent className="pt-6">
+              <div className="text-blue-800">
+                <strong>Período de inscrições:</strong> As inscrições estão abertas quando há aulas disponíveis.
+                <p className="text-sm mt-1">
+                  Aguarde o professor liberar as aulas da semana para poder se inscrever.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {isAlunoSuspenso() && userData.fimSuspensao && (
           <Card className="mb-6 border-red-500 bg-red-50">
@@ -324,20 +310,7 @@ const DashboardAluno = () => {
           </Card>
         )}
 
-        {!inscricaoAberta && (
-          <Card className="mb-6 border-blue-500 bg-blue-50">
-            <CardContent className="pt-6">
-              <div className="text-blue-800">
-                <strong>Período de inscrições:</strong> As inscrições abrem toda segunda-feira às 12:30.
-                <p className="text-sm mt-1">
-                  Você poderá se inscrever nas aulas disponíveis apenas durante este horário.
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        <div className="grid gap-4">
+        <div className="grid gap-4 mb-6">
           <h2 className="text-xl font-semibold mb-4 text-black">Aulas Disponíveis</h2>
           
           {aulas.length === 0 && (
@@ -418,7 +391,7 @@ const DashboardAluno = () => {
                       <Badge variant="destructive">Suspenso</Badge>
                     ) : !inscricaoAberta ? (
                       <Badge variant="secondary" className="bg-blue-100 text-blue-800">
-                        Inscrições fechadas
+                        Aguardando liberação das aulas
                       </Badge>
                     ) : (
                       <Button 
@@ -434,6 +407,25 @@ const DashboardAluno = () => {
               </Card>
             );
           })}
+        </div>
+
+        {/* Regras de suspensão */}
+        <Card className="mb-6 border-orange-500 bg-orange-50">
+          <CardHeader>
+            <CardTitle className="text-orange-800">⚠️ Regras de Suspensão</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-orange-800 space-y-2">
+              <p><strong>Falta com aviso ≥ 4h antes da aula:</strong> 2 semanas de suspensão</p>
+              <p><strong>Falta com aviso &lt; 4h antes da aula:</strong> 3 semanas de suspensão</p>
+              <p><strong>Falta sem aviso:</strong> 4 semanas de suspensão</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Estatísticas de presença */}
+        <div className="mb-6">
+          <EstatisticasPresencaAluno alunoId={user?.id || ''} />
         </div>
       </div>
     </div>
