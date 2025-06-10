@@ -10,7 +10,6 @@ import Logo from '@/components/Logo';
 import CriarAulaModal from '@/components/CriarAulaModal';
 import GerenciarAulas from '@/components/GerenciarAulas';
 import LiberarAulasSemanaModal from '@/components/LiberarAulasSemanaModal';
-import EstatisticasPresenca from '@/components/EstatisticasPresenca';
 
 interface Aula {
   id: string;
@@ -276,7 +275,6 @@ const DashboardProfessor = () => {
         </div>
 
         <div className="grid gap-6 mb-6">
-          <EstatisticasPresenca professorId={user?.id || ''} />
           <GerenciarAulas aulas={aulas} onAulaAtualizada={fetchAulas} />
         </div>
 

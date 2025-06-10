@@ -32,45 +32,12 @@ const LiberarAulasSemanaModal = ({ professorId, onAulasLiberadas }: LiberarAulas
         return;
       }
 
-      // Calcular próxima segunda-feira
-      const agora = new Date();
-      const proximaSegunda = new Date(agora);
-      proximaSegunda.setDate(agora.getDate() + (1 + 7 - agora.getDay()) % 7);
-      proximaSegunda.setHours(0, 0, 0, 0);
-
-      // Para cada template, criar aulas da semana
-      const aulasParaCriar = [];
-      
-      for (const template of templates) {
-        const dataAula = new Date(proximaSegunda);
-        dataAula.setDate(proximaSegunda.getDate() + template.dia_semana - 1);
-        
-        aulasParaCriar.push({
-          professor_id: professorId,
-          professor_nome: template.professor_nome,
-          dia_semana: template.dia_semana,
-          horario: template.horario,
-          link_meet: template.link_meet,
-          capacidade: template.capacidade,
-          data_aula: dataAula.toISOString().split('T')[0],
-          liberada: true,
-          ativa: true
-        });
-      }
-
-      // Inserir todas as aulas
-      const { error: insertError } = await supabase
-        .from('aulas_semana')
-        .insert(aulasParaCriar);
-
-      if (insertError) throw insertError;
-
-      toast.success(`${aulasParaCriar.length} aulas da semana liberadas com sucesso!`);
+      toast.success(`${templates.length} aulas estão disponíveis para a semana!`);
       setOpen(false);
       onAulasLiberadas();
     } catch (error) {
-      console.error('Erro ao liberar aulas:', error);
-      toast.error('Erro ao liberar aulas da semana. Tente novamente.');
+      console.error('Erro ao verificar aulas:', error);
+      toast.error('Erro ao verificar aulas disponíveis. Tente novamente.');
     } finally {
       setLoading(false);
     }
@@ -81,19 +48,19 @@ const LiberarAulasSemanaModal = ({ professorId, onAulasLiberadas }: LiberarAulas
       <DialogTrigger asChild>
         <Button className="bg-green-500 hover:bg-green-600 text-white font-semibold">
           <Calendar className="w-4 h-4 mr-2" />
-          Liberar Aulas da Semana
+          Verificar Aulas da Semana
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle className="text-black">Liberar Aulas da Semana</DialogTitle>
+          <DialogTitle className="text-black">Verificar Aulas da Semana</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
           <p className="text-black/70">
-            Esta ação irá criar todas as aulas da próxima semana baseadas nos seus templates de aula existentes.
+            Esta ação irá verificar todas as suas aulas ativas para a semana.
           </p>
           <p className="text-black/70 text-sm">
-            As aulas serão liberadas para a semana que começa na próxima segunda-feira.
+            As aulas já criadas estarão disponíveis para inscrições dos alunos.
           </p>
           <div className="flex gap-2 pt-4">
             <Button
@@ -110,7 +77,7 @@ const LiberarAulasSemanaModal = ({ professorId, onAulasLiberadas }: LiberarAulas
               className="flex-1 bg-green-500 hover:bg-green-600 text-white font-semibold"
               disabled={loading}
             >
-              {loading ? 'Liberando...' : 'Liberar Aulas'}
+              {loading ? 'Verificando...' : 'Verificar Aulas'}
             </Button>
           </div>
         </div>

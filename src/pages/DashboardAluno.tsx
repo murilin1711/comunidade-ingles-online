@@ -7,6 +7,7 @@ import { toast } from '@/components/ui/sonner';
 import { supabase } from '@/integrations/supabase/client';
 import Logo from '@/components/Logo';
 import AvisarFaltaModal from '@/components/AvisarFaltaModal';
+import EstatisticasPresencaAluno from '@/components/EstatisticasPresencaAluno';
 
 interface Aula {
   id: string;
@@ -288,6 +289,25 @@ const DashboardAluno = () => {
           >
             Sair
           </Button>
+        </div>
+
+        {/* Comunicado sobre suspensões */}
+        <Card className="mb-6 border-orange-500 bg-orange-50">
+          <CardHeader>
+            <CardTitle className="text-orange-800">⚠️ Regras de Suspensão</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-orange-800 space-y-2">
+              <p><strong>Falta com aviso ≥ 4h antes da aula:</strong> 2 semanas de suspensão</p>
+              <p><strong>Falta com aviso &lt; 4h antes da aula:</strong> 3 semanas de suspensão</p>
+              <p><strong>Falta sem aviso:</strong> 4 semanas de suspensão</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Estatísticas de presença */}
+        <div className="mb-6">
+          <EstatisticasPresencaAluno alunoId={user?.id || ''} />
         </div>
 
         {isAlunoSuspenso() && userData.fimSuspensao && (
