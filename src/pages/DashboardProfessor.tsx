@@ -258,13 +258,6 @@ const DashboardProfessor = () => {
               onAulaCriada={fetchAulas} 
             />
             <Button 
-              onClick={() => window.location.href = '/agendamento'} 
-              variant="outline"
-              className="border-black/30 text-black hover:bg-yellow-200"
-            >
-              Agendamento
-            </Button>
-            <Button 
               onClick={logout} 
               variant="outline"
               className="border-black/30 text-black hover:bg-yellow-200"
