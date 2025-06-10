@@ -46,8 +46,12 @@ const ConfirmadosList = ({
           <div key={inscricao.id} className="border border-black/20 rounded-lg p-4">
             <div className="flex justify-between items-start mb-2">
               <div>
-                <p className="font-medium text-black">{inscricao.aluno?.nome || 'Nome não encontrado'}</p>
-                <p className="text-sm text-black/60">Matrícula: {inscricao.aluno?.matricula}</p>
+                <p className="font-medium text-black">
+                  {inscricao.aluno?.nome || 'Nome não encontrado'}
+                </p>
+                <p className="text-sm text-black/60">
+                  Matrícula: {inscricao.aluno?.matricula || 'Matrícula não encontrada'}
+                </p>
               </div>
               {inscricao.presenca && (
                 <Badge className="bg-green-500 text-white">Presente</Badge>

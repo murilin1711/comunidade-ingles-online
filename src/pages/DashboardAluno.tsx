@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -108,8 +107,13 @@ const DashboardAluno = () => {
   };
 
   const isInscricaoAberta = () => {
-    // Sempre permitir inscrições se houver aulas ativas
-    return aulas.length > 0;
+    const agora = new Date();
+    const diaSemana = agora.getDay(); // 0 = domingo, 1 = segunda, etc.
+    const hora = agora.getHours();
+    const minutos = agora.getMinutes();
+    
+    // Verificar se é segunda-feira (dia 1) às 12:30 ou depois
+    return diaSemana === 1 && (hora > 12 || (hora === 12 && minutos >= 30));
   };
 
   const handleInscricao = async (aulaId: string) => {
@@ -282,14 +286,26 @@ const DashboardAluno = () => {
           </Button>
         </div>
 
+        {/* Comunicado sobre período de inscrições */}
+        <Card className="mb-6 border-blue-500 bg-blue-50">
+          <CardContent className="pt-6">
+            <div className="text-blue-800">
+              <strong>Período de inscrições:</strong> As inscrições abrem toda segunda-feira às 12:30.
+              <p className="text-sm mt-1">
+                Você poderá se inscrever nas aulas disponíveis apenas durante este horário.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Período de inscrições e aulas disponíveis */}
-        {!inscricaoAberta && (
-          <Card className="mb-6 border-blue-500 bg-blue-50">
+        {!inscricaoAberta && aulas.length > 0 && (
+          <Card className="mb-6 border-orange-500 bg-orange-50">
             <CardContent className="pt-6">
-              <div className="text-blue-800">
-                <strong>Período de inscrições:</strong> As inscrições estão abertas quando há aulas disponíveis.
+              <div className="text-orange-800">
+                <strong>Inscrições fechadas:</strong> As inscrições estão fechadas no momento.
                 <p className="text-sm mt-1">
-                  Aguarde o professor liberar as aulas da semana para poder se inscrever.
+                  Aguarde até segunda-feira às 12:30 para se inscrever nas aulas.
                 </p>
               </div>
             </CardContent>
@@ -391,7 +407,7 @@ const DashboardAluno = () => {
                       <Badge variant="destructive">Suspenso</Badge>
                     ) : !inscricaoAberta ? (
                       <Badge variant="secondary" className="bg-blue-100 text-blue-800">
-                        Aguardando liberação das aulas
+                        Inscrições fechadas
                       </Badge>
                     ) : (
                       <Button 
@@ -433,3 +449,5 @@ const DashboardAluno = () => {
 };
 
 export default DashboardAluno;
+
+}
