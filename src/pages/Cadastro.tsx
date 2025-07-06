@@ -15,7 +15,7 @@ const Cadastro = () => {
     nome: '',
     email: '',
     telefone: '',
-    tipoUsuario: 'aluno' as 'aluno' | 'professor'
+    tipoUsuario: 'aluno' as 'aluno' | 'professor' | 'admin'
   });
   const [loading, setLoading] = useState(false);
   const { signUp } = useAuth();
@@ -31,7 +31,7 @@ const Cadastro = () => {
   const handleTipoUsuarioChange = (value: string) => {
     setFormData({
       ...formData,
-      tipoUsuario: value as 'aluno' | 'professor'
+      tipoUsuario: value as 'aluno' | 'professor' | 'admin'
     });
   };
 
@@ -111,14 +111,20 @@ const Cadastro = () => {
                 </div>
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="professor" id="professor" />
-                  <Label htmlFor="professor" className="text-black">Mentor/Professor</Label>
+                  <Label htmlFor="professor" className="text-black">Professor</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="admin" id="admin" />
+                  <Label htmlFor="admin" className="text-black">Administrador</Label>
                 </div>
               </RadioGroup>
             </div>
             
             <div>
               <Label htmlFor="matricula" className="text-black">
-                {formData.tipoUsuario === 'aluno' ? 'Matrícula' : 'ID Funcionário'}
+                {formData.tipoUsuario === 'aluno' ? 'Matrícula' : 
+                 formData.tipoUsuario === 'professor' ? 'ID Funcionário' : 
+                 'ID Administrador'}
               </Label>
               <Input
                 id="matricula"
@@ -126,7 +132,9 @@ const Cadastro = () => {
                 type="text"
                 value={formData.matricula}
                 onChange={handleChange}
-                placeholder={formData.tipoUsuario === 'aluno' ? 'Digite a matrícula' : 'Digite o ID do funcionário'}
+                placeholder={formData.tipoUsuario === 'aluno' ? 'Digite a matrícula' : 
+                           formData.tipoUsuario === 'professor' ? 'Digite o ID do funcionário' :
+                           'Digite o ID do administrador'}
                 className="border-black/20 focus:border-yellow-500 focus:ring-yellow-500"
                 required
               />

@@ -8,7 +8,7 @@ interface UserData {
   nome: string;
   email: string;
   telefone: string;
-  role: 'aluno' | 'professor';
+  role: 'aluno' | 'professor' | 'admin';
   statusSuspenso?: boolean;
   fimSuspensao?: Date | null;
 }
@@ -113,7 +113,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           nome: professorData.nome,
           email: professorData.email,
           telefone: professorData.telefone,
-          role: 'professor'
+          role: professorData.role as 'professor' | 'admin' // Usar o role da base de dados
         });
         return;
       }
@@ -183,12 +183,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           throw insertError;
         }
       } else {
+        // Inserir professor ou admin na tabela professores
         const { error: insertError } = await supabase
           .from('professores')
-          .insert(userData);
+          .insert({
+            ...userData,
+            role: userInfo.role // Preserva se é 'professor' ou 'admin'
+          });
 
         if (insertError) {
-          console.error('Error inserting professor:', insertError);
+          console.error('Error inserting professor/admin:', insertError);
           throw insertError;
         }
       }
