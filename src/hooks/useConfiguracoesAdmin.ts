@@ -86,8 +86,21 @@ export const useConfiguracoesAdmin = () => {
 
       if (error) throw error;
 
-      setConfiguracoes(data);
-      return data;
+      if (data) {
+        const mappedData = {
+          id: data.id,
+          faltaComAvisoMais4h: data.falta_com_aviso_mais_4h,
+          faltaComAvisoMenos4h: data.falta_com_aviso_menos_4h,
+          faltaSemAviso: data.falta_sem_aviso,
+          horasMinimaBaixaCansulamento: data.horas_minima_baixa_cancelamento,
+          diaLiberacao: data.dia_liberacao,
+          horarioLiberacao: data.horario_liberacao,
+          mensagemPeriodoInscricao: data.mensagem_periodo_inscricao,
+          mensagemRegrasSuspensao: data.mensagem_regras_suspensao
+        };
+        setConfiguracoes(mappedData);
+        return mappedData;
+      }
     } catch (error) {
       console.error('Erro ao salvar configurações:', error);
       toast.error('Erro ao salvar configurações');

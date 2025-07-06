@@ -11,7 +11,7 @@ import ConfiguracoesSistema from '@/components/admin/ConfiguracoesSistema';
 const DashboardAdmin = () => {
   const { user, userData, logout } = useAuth();
 
-  if (!userData || userData.role !== 'admin') {
+  if (!userData || (userData.role as string) !== 'admin') {
     return (
       <div className="min-h-screen bg-gradient-to-br from-yellow-50 to-yellow-100 flex items-center justify-center">
         <div className="text-center">

@@ -27,9 +27,10 @@ const ProtectedRoute = ({ children, requiredRole }: { children: React.ReactNode,
     return <Navigate to="/login" replace />;
   }
   
-  if (requiredRole && userData.role !== requiredRole) {
+  if (requiredRole && (userData.role as string) !== requiredRole) {
     // Redirecionar para o dashboard apropriado se o usuário tem role diferente
-    const redirectPath = userData.role === 'aluno' ? '/dashboard-aluno' : '/dashboard-professor';
+    const redirectPath = (userData.role as string) === 'admin' ? '/dashboard-admin' :
+                        userData.role === 'aluno' ? '/dashboard-aluno' : '/dashboard-professor';
     return <Navigate to={redirectPath} replace />;
   }
   
@@ -45,7 +46,7 @@ const PublicRoute = ({ children }: { children: React.ReactNode }) => {
   
   if (user && userData) {
     // Redirecionar baseado no tipo de usuário
-    const redirectPath = userData.role === 'admin' ? '/dashboard-admin' : 
+    const redirectPath = (userData.role as string) === 'admin' ? '/dashboard-admin' : 
                         userData.role === 'aluno' ? '/dashboard-aluno' : '/dashboard-professor';
     return <Navigate to={redirectPath} replace />;
   }
