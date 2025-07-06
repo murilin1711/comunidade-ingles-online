@@ -1,8 +1,8 @@
 
 import { useState, useEffect } from 'react';
-import { toast } from '@/components/ui/sonner';
-import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/components/ui/sonner';
 
 interface Aula {
   id: string;
@@ -12,17 +12,24 @@ interface Aula {
   capacidade: number;
   ativa: boolean;
   professor_nome?: string;
+  nivel: string;
 }
 
-interface Inscricao {
+interface Confirmado {
   id: string;
-  aula_id: string;
   aluno_id: string;
-  status: 'confirmado' | 'espera';
-  posicao_espera?: number;
-  data_inscricao: string;
-  presenca?: boolean;
-  aluno?: {
+  aluno: {
+    nome: string;
+    matricula: string;
+  };
+  presenca: boolean | null;
+}
+
+interface AlunoEspera {
+  id: string;
+  aluno_id: string;
+  posicao_espera: number;
+  aluno: {
     nome: string;
     matricula: string;
   };
@@ -31,10 +38,22 @@ interface Inscricao {
 export const useDashboardProfessor = () => {
   const [aulas, setAulas] = useState<Aula[]>([]);
   const [aulaSelecionada, setAulaSelecionada] = useState<string>('');
-  const [confirmados, setConfirmados] = useState<Inscricao[]>([]);
-  const [listaEspera, setListaEspera] = useState<Inscricao[]>([]);
+  const [confirmados, setConfirmados] = useState<Confirmado[]>([]);
+  const [listaEspera, setListaEspera] = useState<AlunoEspera[]>([]);
   const [loading, setLoading] = useState(false);
   const { user } = useAuth();
+
+  useEffect(() => {
+    if (user) {
+      fetchAulas();
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (aulaSelecionada) {
+      fetchInscricoes();
+    }
+  }, [aulaSelecionada]);
 
   const fetchAulas = async () => {
     try {
@@ -47,7 +66,13 @@ export const useDashboardProfessor = () => {
         .order('horario', { ascending: true });
 
       if (error) throw error;
+
       setAulas(data || []);
+      
+      // Se não há aula selecionada e existem aulas, selecionar a primeira
+      if (!aulaSelecionada && data && data.length > 0) {
+        setAulaSelecionada(data[0].id);
+      }
     } catch (error) {
       console.error('Erro ao buscar aulas:', error);
       toast.error('Erro ao carregar aulas');
@@ -62,7 +87,9 @@ export const useDashboardProfessor = () => {
       const { data: confirmadosData, error: confirmadosError } = await supabase
         .from('inscricoes')
         .select(`
-          *,
+          id,
+          aluno_id,
+          presenca,
           aluno:alunos!inscricoes_aluno_id_fkey(nome, matricula)
         `)
         .eq('aula_id', aulaSelecionada)
@@ -75,7 +102,9 @@ export const useDashboardProfessor = () => {
       const { data: esperaData, error: esperaError } = await supabase
         .from('inscricoes')
         .select(`
-          *,
+          id,
+          aluno_id,
+          posicao_espera,
           aluno:alunos!inscricoes_aluno_id_fkey(nome, matricula)
         `)
         .eq('aula_id', aulaSelecionada)
@@ -85,14 +114,8 @@ export const useDashboardProfessor = () => {
 
       if (esperaError) throw esperaError;
 
-      setConfirmados((confirmadosData || []).map(item => ({
-        ...item,
-        status: item.status as 'confirmado' | 'espera'
-      })));
-      setListaEspera((esperaData || []).map(item => ({
-        ...item,
-        status: item.status as 'confirmado' | 'espera'
-      })));
+      setConfirmados(confirmadosData || []);
+      setListaEspera(esperaData || []);
     } catch (error) {
       console.error('Erro ao buscar inscrições:', error);
       toast.error('Erro ao carregar inscrições');
@@ -104,13 +127,13 @@ export const useDashboardProfessor = () => {
     try {
       const { error } = await supabase
         .from('inscricoes')
-        .update({ presenca: true, atualizado_em: new Date().toISOString() })
+        .update({ presenca: true })
         .eq('id', inscricaoId);
 
       if (error) throw error;
 
-      toast.success('Presença marcada!');
       await fetchInscricoes();
+      toast.success('Presença marcada com sucesso!');
     } catch (error) {
       console.error('Erro ao marcar presença:', error);
       toast.error('Erro ao marcar presença');
@@ -119,98 +142,53 @@ export const useDashboardProfessor = () => {
     }
   };
 
-  const handleCancelamento = async (inscricaoId: string, motivo: string) => {
+  const handleMarcarFalta = async (inscricaoId: string) => {
     setLoading(true);
     try {
-      // Marcar cancelamento
-      const { error: updateError } = await supabase
+      // Buscar dados da inscrição
+      const { data: inscricao } = await supabase
         .from('inscricoes')
-        .update({
-          cancelamento: new Date().toISOString(),
-          motivo_cancelamento: motivo,
-          atualizado_em: new Date().toISOString()
-        })
+        .select('aluno_id')
+        .eq('id', inscricaoId)
+        .single();
+
+      if (!inscricao) throw new Error('Inscrição não encontrada');
+
+      // Marcar falta
+      const { error: faltaError } = await supabase
+        .from('inscricoes')
+        .update({ presenca: false })
         .eq('id', inscricaoId);
 
-      if (updateError) throw updateError;
+      if (faltaError) throw faltaError;
 
-      // Promover aluno da lista de espera se necessário
-      if (aulaSelecionada) {
-        const { error: promoverError } = await supabase.rpc('promover_lista_espera', {
-          aula_uuid: aulaSelecionada
-        });
+      // Aplicar suspensão de 4 semanas por falta sem aviso
+      const { error: suspensaoError } = await supabase.rpc('aplicar_suspensao', {
+        aluno_uuid: inscricao.aluno_id,
+        motivo_param: 'falta_sem_aviso',
+        semanas_param: 4
+      });
 
-        if (promoverError) {
-          console.error('Erro ao promover lista de espera:', promoverError);
-        }
+      if (suspensaoError) throw suspensaoError;
+
+      // Promover próximo da lista de espera
+      const { error: promoverError } = await supabase.rpc('promover_lista_espera', {
+        aula_uuid: aulaSelecionada
+      });
+
+      if (promoverError) {
+        console.error('Erro ao promover lista de espera:', promoverError);
       }
 
-      toast.success('Cancelamento processado!');
       await fetchInscricoes();
+      toast.success('Falta marcada e aluno suspenso por 4 semanas');
     } catch (error) {
-      console.error('Erro ao processar cancelamento:', error);
-      toast.error('Erro ao processar cancelamento');
+      console.error('Erro ao marcar falta:', error);
+      toast.error('Erro ao marcar falta');
     } finally {
       setLoading(false);
     }
   };
-
-  const handleMarcarFalta = async (alunoId: string, tipo: string) => {
-    setLoading(true);
-    try {
-      let motivo = '';
-      let semanas = 0;
-
-      switch (tipo) {
-        case 'cancel≥4h':
-          motivo = 'cancelamento_4h';
-          semanas = 0;
-          break;
-        case 'cancel<4h':
-          motivo = 'cancelamento_menos_4h';
-          semanas = 1;
-          break;
-        case 'falta':
-          motivo = 'falta';
-          semanas = 2;
-          break;
-      }
-
-      if (semanas > 0) {
-        // Aplicar suspensão
-        const { error: suspensaoError } = await supabase.rpc('aplicar_suspensao', {
-          aluno_uuid: alunoId,
-          motivo_param: motivo,
-          semanas_param: semanas
-        });
-
-        if (suspensaoError) throw suspensaoError;
-      }
-
-      // Marcar a inscrição como cancelada
-      const inscricao = confirmados.find(i => i.aluno_id === alunoId);
-      if (inscricao) {
-        await handleCancelamento(inscricao.id, motivo);
-      }
-
-      toast.success(`Ação processada! ${semanas > 0 ? `Aluno suspenso por ${semanas} semana(s).` : ''}`);
-    } catch (error) {
-      console.error('Erro ao processar falta:', error);
-      toast.error('Erro ao processar ação');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (user) {
-      fetchAulas();
-    }
-  }, [user]);
-
-  useEffect(() => {
-    fetchInscricoes();
-  }, [aulaSelecionada]);
 
   return {
     aulas,

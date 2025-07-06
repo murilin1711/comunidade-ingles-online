@@ -15,9 +15,8 @@ interface Aula {
   horario: string;
   link_meet: string;
   capacidade: number;
-  professor: {
-    nome: string;
-  };
+  professor_nome: string;
+  nivel: string;
   inscricoes_count: number;
   minha_inscricao?: {
     id: string;
@@ -46,10 +45,7 @@ const DashboardAluno = () => {
       // Buscar todas as aulas ativas
       const { data: aulasData, error: aulasError } = await supabase
         .from('aulas')
-        .select(`
-          *,
-          professor:professores!aulas_professor_id_fkey(nome)
-        `)
+        .select('*')
         .eq('ativa', true)
         .order('dia_semana', { ascending: true })
         .order('horario', { ascending: true });
@@ -352,7 +348,10 @@ const DashboardAluno = () => {
                         {diasSemana[aula.dia_semana]} - {aula.horario}
                       </CardTitle>
                       <p className="text-sm text-black/60 mt-1">
-                        Professor: {aula.professor?.nome}
+                        Professor: {aula.professor_nome}
+                      </p>
+                      <p className="text-sm text-black/60">
+                        Nível: {aula.nivel}
                       </p>
                       {podeVerLink(aula) && (
                         <p className="text-sm text-black/60">

@@ -61,6 +61,7 @@ export type Database = {
           horario: string
           id: string
           link_meet: string
+          nivel: string
           professor_id: string
           professor_nome: string | null
         }
@@ -73,6 +74,7 @@ export type Database = {
           horario: string
           id?: string
           link_meet: string
+          nivel: string
           professor_id: string
           professor_nome?: string | null
         }
@@ -85,6 +87,7 @@ export type Database = {
           horario?: string
           id?: string
           link_meet?: string
+          nivel?: string
           professor_id?: string
           professor_nome?: string | null
         }

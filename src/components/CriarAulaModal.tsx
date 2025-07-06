@@ -21,7 +21,8 @@ const CriarAulaModal = ({ professorId, onAulaCriada }: CriarAulaModalProps) => {
     dia_semana: '',
     horario: '',
     link_meet: '',
-    professor_nome: ''
+    professor_nome: '',
+    nivel: ''
   });
 
   const diasSemana = [
@@ -34,10 +35,15 @@ const CriarAulaModal = ({ professorId, onAulaCriada }: CriarAulaModalProps) => {
     { value: '6', label: 'Sábado' }
   ];
 
+  const niveis = [
+    { value: 'Upper', label: 'Upper' },
+    { value: 'Lower', label: 'Lower' }
+  ];
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.dia_semana || !formData.horario || !formData.link_meet || !formData.professor_nome) {
+    if (!formData.dia_semana || !formData.horario || !formData.link_meet || !formData.professor_nome || !formData.nivel) {
       toast.error('Preencha todos os campos obrigatórios');
       return;
     }
@@ -52,6 +58,7 @@ const CriarAulaModal = ({ professorId, onAulaCriada }: CriarAulaModalProps) => {
           horario: formData.horario,
           link_meet: formData.link_meet,
           professor_nome: formData.professor_nome,
+          nivel: formData.nivel,
           capacidade: 6,
           ativa: true
         });
@@ -59,9 +66,9 @@ const CriarAulaModal = ({ professorId, onAulaCriada }: CriarAulaModalProps) => {
       if (error) throw error;
 
       const diaSelecionado = diasSemana.find(d => d.value === formData.dia_semana)?.label;
-      toast.success(`Aula criada com sucesso para ${diaSelecionado} às ${formData.horario}`);
+      toast.success(`Aula criada com sucesso para ${diaSelecionado} às ${formData.horario} - Nível ${formData.nivel}`);
       
-      setFormData({ dia_semana: '', horario: '', link_meet: '', professor_nome: '' });
+      setFormData({ dia_semana: '', horario: '', link_meet: '', professor_nome: '', nivel: '' });
       setOpen(false);
       onAulaCriada();
     } catch (error) {
@@ -95,6 +102,25 @@ const CriarAulaModal = ({ professorId, onAulaCriada }: CriarAulaModalProps) => {
               className="border-black/20 focus:border-yellow-500 focus:ring-yellow-500"
               placeholder="Nome do professor"
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="nivel" className="text-black">Nível</Label>
+            <Select 
+              value={formData.nivel} 
+              onValueChange={(value) => setFormData(prev => ({ ...prev, nivel: value }))}
+            >
+              <SelectTrigger className="border-black/20 focus:border-yellow-500 focus:ring-yellow-500">
+                <SelectValue placeholder="Selecione o nível" />
+              </SelectTrigger>
+              <SelectContent className="bg-white border border-black/20">
+                {niveis.map((nivel) => (
+                  <SelectItem key={nivel.value} value={nivel.value} className="text-black hover:bg-yellow-50">
+                    {nivel.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-2">

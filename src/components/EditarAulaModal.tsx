@@ -16,6 +16,7 @@ interface Aula {
   capacidade: number;
   ativa: boolean;
   professor_nome?: string;
+  nivel: string;
 }
 
 interface EditarAulaModalProps {
@@ -31,7 +32,8 @@ const EditarAulaModal = ({ aula, open, onOpenChange, onAulaAtualizada }: EditarA
     dia_semana: '',
     horario: '',
     link_meet: '',
-    professor_nome: ''
+    professor_nome: '',
+    nivel: ''
   });
 
   const diasSemana = [
@@ -44,13 +46,19 @@ const EditarAulaModal = ({ aula, open, onOpenChange, onAulaAtualizada }: EditarA
     { value: '6', label: 'Sábado' }
   ];
 
+  const niveis = [
+    { value: 'Upper', label: 'Upper' },
+    { value: 'Lower', label: 'Lower' }
+  ];
+
   React.useEffect(() => {
     if (aula && open) {
       setFormData({
         dia_semana: aula.dia_semana.toString(),
         horario: aula.horario,
         link_meet: aula.link_meet,
-        professor_nome: aula.professor_nome || ''
+        professor_nome: aula.professor_nome || '',
+        nivel: aula.nivel || 'Upper'
       });
     }
   }, [aula, open]);
@@ -58,7 +66,7 @@ const EditarAulaModal = ({ aula, open, onOpenChange, onAulaAtualizada }: EditarA
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!aula || !formData.dia_semana || !formData.horario || !formData.link_meet || !formData.professor_nome) {
+    if (!aula || !formData.dia_semana || !formData.horario || !formData.link_meet || !formData.professor_nome || !formData.nivel) {
       toast.error('Preencha todos os campos obrigatórios');
       return;
     }
@@ -72,6 +80,7 @@ const EditarAulaModal = ({ aula, open, onOpenChange, onAulaAtualizada }: EditarA
           horario: formData.horario,
           link_meet: formData.link_meet,
           professor_nome: formData.professor_nome,
+          nivel: formData.nivel,
           atualizado_em: new Date().toISOString()
         })
         .eq('id', aula.id);
@@ -79,7 +88,7 @@ const EditarAulaModal = ({ aula, open, onOpenChange, onAulaAtualizada }: EditarA
       if (error) throw error;
 
       const diaSelecionado = diasSemana.find(d => d.value === formData.dia_semana)?.label;
-      toast.success(`Aula atualizada com sucesso para ${diaSelecionado} às ${formData.horario}`);
+      toast.success(`Aula atualizada com sucesso para ${diaSelecionado} às ${formData.horario} - Nível ${formData.nivel}`);
       
       onOpenChange(false);
       onAulaAtualizada();
@@ -110,6 +119,25 @@ const EditarAulaModal = ({ aula, open, onOpenChange, onAulaAtualizada }: EditarA
               className="border-black/20 focus:border-yellow-500 focus:ring-yellow-500"
               placeholder="Nome do professor"
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="nivel" className="text-black">Nível</Label>
+            <Select 
+              value={formData.nivel} 
+              onValueChange={(value) => setFormData(prev => ({ ...prev, nivel: value }))}
+            >
+              <SelectTrigger className="border-black/20 focus:border-yellow-500 focus:ring-yellow-500">
+                <SelectValue placeholder="Selecione o nível" />
+              </SelectTrigger>
+              <SelectContent className="bg-white border border-black/20">
+                {niveis.map((nivel) => (
+                  <SelectItem key={nivel.value} value={nivel.value} className="text-black hover:bg-yellow-50">
+                    {nivel.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="space-y-2">
