@@ -31,7 +31,17 @@ export const useConfiguracoesAdmin = () => {
       }
 
       if (data) {
-        setConfiguracoes(data);
+        setConfiguracoes({
+          id: data.id,
+          faltaComAvisoMais4h: data.falta_com_aviso_mais_4h,
+          faltaComAvisoMenos4h: data.falta_com_aviso_menos_4h,
+          faltaSemAviso: data.falta_sem_aviso,
+          horasMinimaBaixaCansulamento: data.horas_minima_baixa_cancelamento,
+          diaLiberacao: data.dia_liberacao,
+          horarioLiberacao: data.horario_liberacao,
+          mensagemPeriodoInscricao: data.mensagem_periodo_inscricao,
+          mensagemRegrasSuspensao: data.mensagem_regras_suspensao
+        });
       } else {
         // Se não existir configuração, criar com valores padrão
         const configPadrao: ConfiguracoesSistema = {
@@ -57,9 +67,20 @@ export const useConfiguracoesAdmin = () => {
   const salvarConfiguracoes = useCallback(async (novasConfiguracoes: ConfiguracoesSistema) => {
     setLoading(true);
     try {
+      const dbData = {
+        falta_com_aviso_mais_4h: novasConfiguracoes.faltaComAvisoMais4h,
+        falta_com_aviso_menos_4h: novasConfiguracoes.faltaComAvisoMenos4h,
+        falta_sem_aviso: novasConfiguracoes.faltaSemAviso,
+        horas_minima_baixa_cancelamento: novasConfiguracoes.horasMinimaBaixaCansulamento,
+        dia_liberacao: novasConfiguracoes.diaLiberacao,
+        horario_liberacao: novasConfiguracoes.horarioLiberacao,
+        mensagem_periodo_inscricao: novasConfiguracoes.mensagemPeriodoInscricao,
+        mensagem_regras_suspensao: novasConfiguracoes.mensagemRegrasSuspensao
+      };
+      
       const { data, error } = await supabase
         .from('configuracoes_sistema')
-        .upsert(novasConfiguracoes)
+        .upsert(dbData)
         .select()
         .single();
 

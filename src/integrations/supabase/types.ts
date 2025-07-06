@@ -101,6 +101,48 @@ export type Database = {
           },
         ]
       }
+      configuracoes_sistema: {
+        Row: {
+          atualizado_em: string
+          criado_em: string
+          dia_liberacao: number
+          falta_com_aviso_mais_4h: number
+          falta_com_aviso_menos_4h: number
+          falta_sem_aviso: number
+          horario_liberacao: string
+          horas_minima_baixa_cancelamento: number
+          id: string
+          mensagem_periodo_inscricao: string
+          mensagem_regras_suspensao: string
+        }
+        Insert: {
+          atualizado_em?: string
+          criado_em?: string
+          dia_liberacao?: number
+          falta_com_aviso_mais_4h?: number
+          falta_com_aviso_menos_4h?: number
+          falta_sem_aviso?: number
+          horario_liberacao?: string
+          horas_minima_baixa_cancelamento?: number
+          id?: string
+          mensagem_periodo_inscricao?: string
+          mensagem_regras_suspensao?: string
+        }
+        Update: {
+          atualizado_em?: string
+          criado_em?: string
+          dia_liberacao?: number
+          falta_com_aviso_mais_4h?: number
+          falta_com_aviso_menos_4h?: number
+          falta_sem_aviso?: number
+          horario_liberacao?: string
+          horas_minima_baixa_cancelamento?: number
+          id?: string
+          mensagem_periodo_inscricao?: string
+          mensagem_regras_suspensao?: string
+        }
+        Relationships: []
+      }
       inscricoes: {
         Row: {
           aluno_id: string

@@ -10,6 +10,7 @@ import Cadastro from "./pages/Cadastro";
 import CadastroFuncionario from "./pages/CadastroFuncionario";
 import DashboardAluno from "./pages/DashboardAluno";
 import DashboardProfessor from "./pages/DashboardProfessor";
+import DashboardAdmin from "./pages/DashboardAdmin";
 import AgendamentoAulas from "./pages/AgendamentoAulas";
 import NotFound from "./pages/NotFound";
 
@@ -44,7 +45,8 @@ const PublicRoute = ({ children }: { children: React.ReactNode }) => {
   
   if (user && userData) {
     // Redirecionar baseado no tipo de usuário
-    const redirectPath = userData.role === 'aluno' ? '/dashboard-aluno' : '/dashboard-professor';
+    const redirectPath = userData.role === 'admin' ? '/dashboard-admin' : 
+                        userData.role === 'aluno' ? '/dashboard-aluno' : '/dashboard-professor';
     return <Navigate to={redirectPath} replace />;
   }
   
@@ -78,6 +80,11 @@ const AppContent = () => {
       <Route path="/dashboard-professor" element={
         <ProtectedRoute requiredRole="professor">
           <DashboardProfessor />
+        </ProtectedRoute>
+      } />
+      <Route path="/dashboard-admin" element={
+        <ProtectedRoute requiredRole="admin">
+          <DashboardAdmin />
         </ProtectedRoute>
       } />
       <Route path="/agendamento" element={
