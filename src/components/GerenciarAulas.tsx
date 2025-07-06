@@ -15,6 +15,7 @@ interface Aula {
   link_meet: string;
   capacidade: number;
   ativa: boolean;
+  nivel: string;
   professor_nome?: string;
 }
 
@@ -84,6 +85,9 @@ const GerenciarAulas = ({ aulas, onAulaAtualizada }: GerenciarAulasProps) => {
                         </h3>
                         <Badge className="bg-yellow-500 text-black">
                           {aula.capacidade} vagas
+                        </Badge>
+                        <Badge variant="outline" className="border-black/30 text-black">
+                          {aula.nivel}
                         </Badge>
                       </div>
                       {aula.professor_nome && (
