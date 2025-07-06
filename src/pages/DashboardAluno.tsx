@@ -449,5 +449,3 @@ const DashboardAluno = () => {
 };
 
 export default DashboardAluno;
-
-}
