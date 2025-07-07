@@ -90,18 +90,24 @@ export const useProfessoresStats = () => {
 
   const fetchProfessores = useCallback(async () => {
     try {
+      console.log('Buscando professores...');
       const { data, error } = await supabase
         .from('professores')
         .select('user_id, nome')
         .order('nome');
 
-      if (error) throw error;
+      console.log('Dados dos professores:', data);
+      if (error) {
+        console.error('Erro ao buscar professores:', error);
+        throw error;
+      }
 
       const professoresFormatados = data?.map(prof => ({
         id: prof.user_id,
         nome: prof.nome
       })) || [];
 
+      console.log('Professores formatados:', professoresFormatados);
       setProfessores(professoresFormatados);
     } catch (error) {
       console.error('Erro ao buscar professores:', error);

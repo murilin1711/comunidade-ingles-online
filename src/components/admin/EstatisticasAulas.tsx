@@ -130,11 +130,15 @@ const EstatisticasAulas = () => {
                 </SelectTrigger>
                 <SelectContent className="bg-white z-50">
                   <SelectItem value="todos">Todos os professores</SelectItem>
-                  {professores.map((professor) => (
-                    <SelectItem key={professor.id} value={professor.id}>
-                      {professor.nome}
-                    </SelectItem>
-                  ))}
+                  {professores.length === 0 ? (
+                    <SelectItem value="loading" disabled>Carregando professores...</SelectItem>
+                  ) : (
+                    professores.map((professor) => (
+                      <SelectItem key={professor.id} value={professor.id}>
+                        {professor.nome}
+                      </SelectItem>
+                    ))
+                  )}
                 </SelectContent>
               </Select>
             </div>

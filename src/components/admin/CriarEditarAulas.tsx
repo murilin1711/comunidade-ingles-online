@@ -66,12 +66,19 @@ const CriarEditarAulas = () => {
 
   const fetchProfessores = async () => {
     try {
+      console.log('CriarEditarAulas: Buscando professores...');
       const { data, error } = await supabase
         .from('professores')
         .select('user_id, nome, email')
         .order('nome');
 
-      if (error) throw error;
+      console.log('CriarEditarAulas: Dados dos professores:', data);
+      if (error) {
+        console.error('CriarEditarAulas: Erro ao buscar professores:', error);
+        throw error;
+      }
+      
+      console.log('CriarEditarAulas: Professores carregados:', data || []);
       setProfessores(data || []);
     } catch (error) {
       console.error('Erro ao buscar professores:', error);
@@ -181,11 +188,15 @@ const CriarEditarAulas = () => {
                   <SelectValue placeholder="Selecione um professor" />
                 </SelectTrigger>
                 <SelectContent className="bg-white z-50">
-                  {professores.map((professor) => (
-                    <SelectItem key={professor.user_id} value={professor.user_id}>
-                      {professor.nome}
-                    </SelectItem>
-                  ))}
+                  {professores.length === 0 ? (
+                    <SelectItem value="loading" disabled>Carregando professores...</SelectItem>
+                  ) : (
+                    professores.map((professor) => (
+                      <SelectItem key={professor.user_id} value={professor.user_id}>
+                        {professor.nome}
+                      </SelectItem>
+                    ))
+                  )}
                 </SelectContent>
               </Select>
             </div>
