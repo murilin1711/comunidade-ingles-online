@@ -148,9 +148,15 @@ export const useDashboardProfessor = () => {
       const confirmadosValidos = (confirmadosData || []).filter(item => item.aluno);
       const esperaValidos = (esperaData || []).filter(item => item.aluno);
 
+      console.log('=== DEBUG ORDENAÇÃO ===');
       console.log('Dados confirmados recebidos:', confirmadosData);
+      console.log('Confirmados válidos (ordenados por timestamp):', confirmadosValidos.map((c, index) => ({
+        posicao: index + 1,
+        nome: c.aluno?.nome,
+        timestamp: c.timestamp_inscricao,
+        id: c.id
+      })));
       console.log('Dados espera recebidos:', esperaData);
-      console.log('Confirmados válidos:', confirmadosValidos);
       console.log('Espera válidos:', esperaValidos);
 
       setConfirmados(confirmadosValidos);
