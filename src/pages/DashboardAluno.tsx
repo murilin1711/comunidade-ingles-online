@@ -41,6 +41,43 @@ const DashboardAluno = () => {
     }
   }, [user, userData]);
 
+  // Real-time updates para sincronização automática
+  useEffect(() => {
+    if (!user || userData?.role !== 'aluno') return;
+
+    const channel = supabase
+      .channel('dashboard-aluno-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'inscricoes'
+        },
+        () => {
+          console.log('Inscricoes changed, updating dashboard...');
+          fetchAulas();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'aulas'
+        },
+        () => {
+          console.log('Aulas changed, updating dashboard...');
+          fetchAulas();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user, userData]);
+
   const fetchAulas = async () => {
     try {
       // Buscar todas as aulas ativas

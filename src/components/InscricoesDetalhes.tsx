@@ -72,6 +72,31 @@ const InscricoesDetalhes = ({ aulaId, diaSemana, horario, minhaInscricao }: Insc
     fetchInscricoes();
   }, [mostrarDetalhes, aulaId, minhaInscricao]);
 
+  // Real-time updates para sincronização de dados
+  useEffect(() => {
+    if (!mostrarDetalhes || !aulaId) return;
+
+    const channel = supabase
+      .channel(`inscricoes-detalhes-${aulaId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'inscricoes',
+          filter: `aula_id=eq.${aulaId}`
+        },
+        () => {
+          fetchInscricoes();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [mostrarDetalhes, aulaId]);
+
   if (!minhaInscricao) {
     return null;
   }
@@ -131,23 +156,35 @@ const InscricoesDetalhes = ({ aulaId, diaSemana, horario, minhaInscricao }: Insc
                         Confirmados ({inscricoesConfirmadas.length})
                       </Badge>
                     </h4>
-                    <div className="space-y-1">
+                     <div className="space-y-1">
                       {inscricoesConfirmadas.map((inscricao, index) => (
                         <div 
                           key={inscricao.id}
                           className={`flex items-center justify-between p-2 rounded text-sm ${
                             isMinhaInscricao(inscricao) 
-                              ? 'bg-yellow-50 border border-yellow-200' 
+                              ? 'bg-yellow-100 border-2 border-yellow-400 shadow-md' 
                               : 'bg-gray-50'
                           }`}
                         >
                           <div className="flex items-center gap-2">
-                            <Badge variant="outline" className="text-xs w-6 h-6 flex items-center justify-center">
-                              {index + 1}
+                            <Badge 
+                              variant="outline" 
+                              className={`text-xs w-8 h-6 flex items-center justify-center font-bold ${
+                                isMinhaInscricao(inscricao) 
+                                  ? 'bg-yellow-500 text-white border-yellow-600' 
+                                  : 'bg-white'
+                              }`}
+                            >
+                              {index + 1}º
                             </Badge>
-                            <span className={isMinhaInscricao(inscricao) ? 'font-medium' : ''}>
-                              {isMinhaInscricao(inscricao) ? 'Você' : inscricao.aluno.nome}
+                            <span className={`${isMinhaInscricao(inscricao) ? 'font-bold text-yellow-800' : ''}`}>
+                              {isMinhaInscricao(inscricao) ? '🎯 Você' : inscricao.aluno.nome}
                             </span>
+                            {isMinhaInscricao(inscricao) && (
+                              <Badge className="bg-yellow-500 text-white text-xs">
+                                Sua posição
+                              </Badge>
+                            )}
                           </div>
                           <span className="text-xs text-black/60">
                             {formatarTimestamp(inscricao.timestamp_inscricao)}
@@ -166,23 +203,35 @@ const InscricoesDetalhes = ({ aulaId, diaSemana, horario, minhaInscricao }: Insc
                         Lista de Espera ({inscricoesEspera.length})
                       </Badge>
                     </h4>
-                    <div className="space-y-1">
+                     <div className="space-y-1">
                       {inscricoesEspera.map((inscricao, index) => (
                         <div 
                           key={inscricao.id}
                           className={`flex items-center justify-between p-2 rounded text-sm ${
                             isMinhaInscricao(inscricao) 
-                              ? 'bg-yellow-50 border border-yellow-200' 
+                              ? 'bg-orange-100 border-2 border-orange-400 shadow-md' 
                               : 'bg-orange-50'
                           }`}
                         >
                           <div className="flex items-center gap-2">
-                            <Badge variant="outline" className="text-xs w-6 h-6 flex items-center justify-center bg-orange-100">
-                              {index + 1}
+                            <Badge 
+                              variant="outline" 
+                              className={`text-xs w-8 h-6 flex items-center justify-center font-bold ${
+                                isMinhaInscricao(inscricao) 
+                                  ? 'bg-orange-500 text-white border-orange-600' 
+                                  : 'bg-orange-100 text-orange-700'
+                              }`}
+                            >
+                              {index + 1}º
                             </Badge>
-                            <span className={isMinhaInscricao(inscricao) ? 'font-medium' : ''}>
-                              {isMinhaInscricao(inscricao) ? 'Você' : inscricao.aluno.nome}
+                            <span className={`${isMinhaInscricao(inscricao) ? 'font-bold text-orange-800' : ''}`}>
+                              {isMinhaInscricao(inscricao) ? '⏳ Você' : inscricao.aluno.nome}
                             </span>
+                            {isMinhaInscricao(inscricao) && (
+                              <Badge className="bg-orange-500 text-white text-xs">
+                                Lista de espera
+                              </Badge>
+                            )}
                           </div>
                           <span className="text-xs text-black/60">
                             {formatarTimestamp(inscricao.timestamp_inscricao)}
