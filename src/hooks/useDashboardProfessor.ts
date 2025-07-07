@@ -57,6 +57,31 @@ export const useDashboardProfessor = () => {
     }
   }, [aulaSelecionada]);
 
+  // Configurar atualização em tempo real
+  useEffect(() => {
+    if (!aulaSelecionada) return;
+
+    const channel = supabase
+      .channel('inscricoes-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'inscricoes',
+          filter: `aula_id=eq.${aulaSelecionada}`
+        },
+        () => {
+          fetchInscricoes();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [aulaSelecionada]);
+
   const fetchAulas = async () => {
     try {
       const { data, error } = await supabase

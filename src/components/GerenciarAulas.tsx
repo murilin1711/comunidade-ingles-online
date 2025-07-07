@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { toast } from '@/components/ui/sonner';
 import { supabase } from '@/integrations/supabase/client';
-import { Trash2, Edit } from 'lucide-react';
+import { Trash2, Edit, CheckCircle } from 'lucide-react';
 import EditarAulaModal from './EditarAulaModal';
 
 interface Aula {
@@ -62,6 +62,34 @@ const GerenciarAulas = ({ aulas, onAulaAtualizada }: GerenciarAulasProps) => {
     setModalEdicaoAberto(true);
   };
 
+  const handleConcluirAula = async (aulaId: string, dia: string, horario: string) => {
+    const confirmacao = window.confirm(`Tem certeza que deseja marcar a aula de ${dia} às ${horario} como concluída?`);
+    
+    if (!confirmacao) return;
+
+    setLoading(true);
+    try {
+      // Marcar aula como inativa e atualizar data_aula para o passado
+      const { error } = await supabase
+        .from('aulas')
+        .update({ 
+          ativa: false,
+          data_aula: new Date().toISOString().split('T')[0] // Data de hoje
+        })
+        .eq('id', aulaId);
+
+      if (error) throw error;
+
+      toast.success('Aula marcada como concluída');
+      onAulaAtualizada();
+    } catch (error) {
+      console.error('Erro ao concluir aula:', error);
+      toast.error('Erro ao concluir aula');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const aulasAtivas = aulas.filter(aula => aula.ativa);
 
   return (
@@ -107,6 +135,18 @@ const GerenciarAulas = ({ aulas, onAulaAtualizada }: GerenciarAulasProps) => {
                         className="border-black/30 text-black hover:bg-yellow-50"
                       >
                         <Edit className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        className="bg-green-500 hover:bg-green-600 text-white"
+                        onClick={() => handleConcluirAula(
+                          aula.id, 
+                          diasSemana[aula.dia_semana], 
+                          aula.horario
+                        )}
+                        disabled={loading}
+                      >
+                        <CheckCircle className="w-4 h-4" />
                       </Button>
                       <Button
                         size="sm"

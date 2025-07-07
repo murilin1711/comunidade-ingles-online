@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -26,9 +27,13 @@ import {
   Settings, 
   CalendarPlus,
   LockKeyhole,
-  RefreshCw
+  RefreshCw,
+  BookOpen,
+  Activity
 } from 'lucide-react';
 import { useConfiguracoesAdmin } from '@/hooks/useConfiguracoesAdmin';
+import CriarEditarAulas from './CriarEditarAulas';
+import GerenciarAulasAtivas from './GerenciarAulasAtivas';
 
 interface AulaParaLiberar {
   id: string;
@@ -62,6 +67,7 @@ const GerenciarAulasAdmin = () => {
   const [aulasParaFechar, setAulasParaFechar] = useState<AulaParaFechar[]>([]);
   const [aulasExcluidas, setAulasExcluidas] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+  const [aulaParaEditar, setAulaParaEditar] = useState<any>(null);
 
   const { configuracoes, fetchConfiguracoes, salvarConfiguracoes: salvarConfiguracoesHook } = useConfiguracoesAdmin();
 
@@ -242,10 +248,39 @@ const GerenciarAulasAdmin = () => {
     );
   };
 
+  const handleEditarAula = (aula: any) => {
+    setAulaParaEditar(aula);
+  };
+
   return (
     <div className="space-y-6">
-      {/* Configurações Automáticas */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <Tabs defaultValue="criar-editar" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-3 bg-white/50 border border-black/20">
+          <TabsTrigger value="criar-editar" className="flex items-center gap-2">
+            <BookOpen className="w-4 h-4" />
+            Criar/Editar Aulas
+          </TabsTrigger>
+          <TabsTrigger value="gerenciar" className="flex items-center gap-2">
+            <Activity className="w-4 h-4" />
+            Aulas Ativas/Inativas
+          </TabsTrigger>
+          <TabsTrigger value="configuracoes" className="flex items-center gap-2">
+            <Settings className="w-4 h-4" />
+            Configurações
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="criar-editar">
+          <CriarEditarAulas />
+        </TabsContent>
+
+        <TabsContent value="gerenciar">
+          <GerenciarAulasAtivas onEditarAula={handleEditarAula} />
+        </TabsContent>
+
+        <TabsContent value="configuracoes">
+          {/* Configurações Automáticas */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Liberação Automática */}
         <Card className="border-green-200">
           <CardHeader>
@@ -521,6 +556,8 @@ const GerenciarAulasAdmin = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
