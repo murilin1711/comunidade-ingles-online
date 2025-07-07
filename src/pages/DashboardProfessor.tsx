@@ -42,7 +42,6 @@ const DashboardProfessor = () => {
           userName={userData.nome}
           userId={user?.id || ''}
           onAulaCriada={fetchAulas}
-          onAulasLiberadas={fetchAulas}
           onLogout={logout}
         />
 

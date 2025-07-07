@@ -3,13 +3,11 @@ import React from 'react';
 import { Button } from "@/components/ui/button";
 import Logo from '@/components/Logo';
 import CriarAulaModal from '@/components/CriarAulaModal';
-import LiberarAulasSemanaModal from '@/components/LiberarAulasSemanaModal';
 
 interface DashboardHeaderProps {
   userName: string;
   userId: string;
   onAulaCriada: () => void;
-  onAulasLiberadas: () => void;
   onLogout: () => void;
 }
 
@@ -17,7 +15,6 @@ const DashboardHeader = ({
   userName, 
   userId, 
   onAulaCriada, 
-  onAulasLiberadas, 
   onLogout 
 }: DashboardHeaderProps) => {
   return (
@@ -30,10 +27,6 @@ const DashboardHeader = ({
         </div>
       </div>
       <div className="flex gap-2">
-        <LiberarAulasSemanaModal 
-          professorId={userId} 
-          onAulasLiberadas={onAulasLiberadas} 
-        />
         <CriarAulaModal 
           professorId={userId} 
           onAulaCriada={onAulaCriada} 

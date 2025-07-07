@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from '@/components/ui/sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { Plus } from 'lucide-react';
 
 interface CriarAulaModalProps {
@@ -17,6 +18,7 @@ interface CriarAulaModalProps {
 const CriarAulaModal = ({ professorId, onAulaCriada }: CriarAulaModalProps) => {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const { userData } = useAuth();
   const [formData, setFormData] = useState({
     dia_semana: '',
     horario: '',
@@ -39,6 +41,13 @@ const CriarAulaModal = ({ professorId, onAulaCriada }: CriarAulaModalProps) => {
     { value: 'Upper', label: 'Upper' },
     { value: 'Lower', label: 'Lower' }
   ];
+
+  // Preencher automaticamente o nome do professor quando o modal abrir
+  useEffect(() => {
+    if (open && userData) {
+      setFormData(prev => ({ ...prev, professor_nome: userData.nome }));
+    }
+  }, [open, userData]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -68,7 +77,7 @@ const CriarAulaModal = ({ professorId, onAulaCriada }: CriarAulaModalProps) => {
       const diaSelecionado = diasSemana.find(d => d.value === formData.dia_semana)?.label;
       toast.success(`Aula criada com sucesso para ${diaSelecionado} às ${formData.horario} - Nível ${formData.nivel}`);
       
-      setFormData({ dia_semana: '', horario: '', link_meet: '', professor_nome: '', nivel: '' });
+      setFormData({ dia_semana: '', horario: '', link_meet: '', professor_nome: userData?.nome || '', nivel: '' });
       setOpen(false);
       onAulaCriada();
     } catch (error) {
@@ -98,8 +107,8 @@ const CriarAulaModal = ({ professorId, onAulaCriada }: CriarAulaModalProps) => {
               id="professor_nome"
               type="text"
               value={formData.professor_nome}
-              onChange={(e) => setFormData(prev => ({ ...prev, professor_nome: e.target.value }))}
-              className="border-black/20 focus:border-yellow-500 focus:ring-yellow-500"
+              readOnly
+              className="border-black/20 bg-gray-50 cursor-not-allowed"
               placeholder="Nome do professor"
             />
           </div>
