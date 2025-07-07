@@ -58,14 +58,15 @@ const HistoricoAulaModal = ({ aula, open, onOpenChange }: HistoricoAulaModalProp
   const formatarTimestamp = (timestamp: string) => {
     const data = new Date(timestamp);
     const milissegundos = data.getMilliseconds().toString().padStart(3, '0');
-    return data.toLocaleString('pt-BR', {
+    const dataFormatada = data.toLocaleString('pt-BR', {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
       second: '2-digit'
-    }) + `.${milissegundos}`;
+    });
+    return `${dataFormatada}.${milissegundos}`;
   };
 
   const filtrarAlunos = (alunos: Aluno[]) => {
