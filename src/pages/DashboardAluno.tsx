@@ -8,6 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
 import Logo from '@/components/Logo';
 import AvisarFaltaModal from '@/components/AvisarFaltaModal';
 import EstatisticasPresencaAluno from '@/components/EstatisticasPresencaAluno';
+import InscricoesDetalhes from '@/components/InscricoesDetalhes';
 
 interface Aula {
   id: string;
@@ -418,6 +419,16 @@ const DashboardAluno = () => {
                       </Button>
                     )}
                   </div>
+                  
+                  {/* Mostrar detalhes das inscrições apenas se o aluno estiver inscrito */}
+                  {jaInscrito && (
+                    <InscricoesDetalhes
+                      aulaId={aula.id}
+                      diaSemana={diasSemana[aula.dia_semana]}
+                      horario={aula.horario}
+                      minhaInscricao={aula.minha_inscricao}
+                    />
+                  )}
                 </CardContent>
               </Card>
             );

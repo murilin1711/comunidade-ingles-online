@@ -197,6 +197,7 @@ export type Database = {
           posicao_espera: number | null
           presenca: boolean | null
           status: string
+          timestamp_inscricao: string
         }
         Insert: {
           aluno_id: string
@@ -210,6 +211,7 @@ export type Database = {
           posicao_espera?: number | null
           presenca?: boolean | null
           status?: string
+          timestamp_inscricao?: string
         }
         Update: {
           aluno_id?: string
@@ -223,6 +225,7 @@ export type Database = {
           posicao_espera?: number | null
           presenca?: boolean | null
           status?: string
+          timestamp_inscricao?: string
         }
         Relationships: [
           {
