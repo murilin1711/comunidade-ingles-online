@@ -8,6 +8,7 @@ import { useAdminStats } from '@/hooks/useAdminStats';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Calendar, Clock, Users, UserCheck, UserX, UserMinus } from 'lucide-react';
+import HistoricoAulaCard from './HistoricoAulaCard';
 
 const EstatisticasAulas = () => {
   const [filtros, setFiltros] = useState({
@@ -164,7 +165,7 @@ const EstatisticasAulas = () => {
         </Card>
       </div>
 
-      {/* Lista de Aulas */}
+      {/* Histórico de Aulas em Cards */}
       <Card className="border-black/20">
         <CardHeader>
           <CardTitle className="text-black flex items-center gap-2">
@@ -174,61 +175,24 @@ const EstatisticasAulas = () => {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="text-center py-8">
-              <p className="text-black/60">Carregando dados...</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {[...Array(6)].map((_, i) => (
+                <div key={i} className="animate-pulse">
+                  <div className="bg-gray-200 h-40 rounded-lg"></div>
+                </div>
+              ))}
             </div>
           ) : historicoAulas.length === 0 ? (
-            <div className="text-center py-8">
-              <p className="text-black/60">Nenhuma aula encontrada com os filtros aplicados.</p>
+            <div className="text-center py-12">
+              <Calendar className="w-12 h-12 text-black/30 mx-auto mb-4" />
+              <p className="text-black/60 text-lg font-medium mb-2">Nenhuma aula encontrada</p>
+              <p className="text-black/40">Ajuste os filtros para ver o histórico de aulas</p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="text-black">Aula</TableHead>
-                    <TableHead className="text-black">Professor</TableHead>
-                    <TableHead className="text-black">Data/Hora</TableHead>
-                    <TableHead className="text-black">Nível</TableHead>
-                    <TableHead className="text-black">Confirmados</TableHead>
-                    <TableHead className="text-black">Presentes</TableHead>
-                    <TableHead className="text-black">Faltas</TableHead>
-                    <TableHead className="text-black">Lista de Espera</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {historicoAulas.map((aula) => (
-                    <TableRow key={aula.id}>
-                      <TableCell className="font-medium text-black">
-                        {diasSemana[aula.dia_semana]} - {aula.horario}
-                      </TableCell>
-                      <TableCell className="text-black">
-                        {aula.professor_nome}
-                      </TableCell>
-                      <TableCell className="text-black">
-                        {aula.data_aula ? format(new Date(aula.data_aula), 'dd/MM/yyyy', { locale: ptBR }) : '-'}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="border-black/30 text-black">
-                          {aula.nivel}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-black">
-                        {aula.confirmados?.length || 0}/{aula.capacidade}
-                      </TableCell>
-                      <TableCell className="text-green-600 font-medium">
-                        {aula.presentes?.length || 0}
-                      </TableCell>
-                      <TableCell className="text-red-600 font-medium">
-                        {aula.faltas?.length || 0}
-                      </TableCell>
-                      <TableCell className="text-orange-600 font-medium">
-                        {aula.listaEspera?.length || 0}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {historicoAulas.map((aula) => (
+                <HistoricoAulaCard key={aula.id} aula={aula} />
+              ))}
             </div>
           )}
         </CardContent>

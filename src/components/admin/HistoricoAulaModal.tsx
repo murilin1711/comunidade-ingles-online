@@ -1,0 +1,290 @@
+import React, { useState } from 'react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Search, Download, Users, Clock, Check, X } from 'lucide-react';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+
+interface Aluno {
+  id: string;
+  aluno_id: string;
+  timestamp_inscricao: string;
+  posicao_espera?: number;
+  presenca?: boolean | null;
+  aluno?: {
+    nome: string;
+    matricula: string;
+    email: string;
+  } | null;
+}
+
+interface HistoricoAula {
+  id: string;
+  dia_semana: number;
+  horario: string;
+  nivel: string;
+  professor_nome: string;
+  data_aula?: string | null;
+  capacidade: number;
+  confirmados?: Aluno[];
+  presentes?: Aluno[];
+  faltas?: Aluno[];
+  listaEspera?: Aluno[];
+}
+
+interface HistoricoAulaModalProps {
+  aula: HistoricoAula;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}
+
+const diasSemana = [
+  'Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'
+];
+
+const HistoricoAulaModal = ({ aula, open, onOpenChange }: HistoricoAulaModalProps) => {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [activeTab, setActiveTab] = useState('confirmados');
+
+  const formatarTimestamp = (timestamp: string) => {
+    const data = new Date(timestamp);
+    const milissegundos = data.getMilliseconds().toString().padStart(3, '0');
+    return data.toLocaleString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    }) + `.${milissegundos}`;
+  };
+
+  const filtrarAlunos = (alunos: Aluno[]) => {
+    if (!searchTerm) return alunos;
+    return alunos.filter(aluno => 
+      aluno.aluno?.nome?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      aluno.aluno?.matricula?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      aluno.aluno?.email?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  };
+
+  const exportarCSV = (dados: Aluno[], tipo: string) => {
+    const headers = tipo === 'confirmados' 
+      ? ['Matrícula', 'Nome Completo', 'E-mail', 'Presença', 'Data Inscrição']
+      : ['Posição', 'Matrícula', 'Nome Completo', 'E-mail', 'Data Inscrição'];
+
+    const linhas = dados.map((aluno, index) => {
+      const presencaTexto = aluno.presenca === true ? 'Presente' : 
+                           aluno.presenca === false ? 'Falta' : 'Não marcado';
+      
+      return tipo === 'confirmados'
+        ? [
+            aluno.aluno?.matricula || 'N/A',
+            aluno.aluno?.nome || 'Nome não disponível',
+            aluno.aluno?.email || 'N/A',
+            presencaTexto,
+            formatarTimestamp(aluno.timestamp_inscricao)
+          ]
+        : [
+            `${index + 1}º`,
+            aluno.aluno?.matricula || 'N/A',
+            aluno.aluno?.nome || 'Nome não disponível',
+            aluno.aluno?.email || 'N/A',
+            formatarTimestamp(aluno.timestamp_inscricao)
+          ];
+    });
+
+    const csvContent = [headers, ...linhas]
+      .map(linha => linha.map(campo => `"${campo}"`).join(','))
+      .join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    
+    link.setAttribute('href', url);
+    link.setAttribute('download', `${diasSemana[aula.dia_semana]}_${aula.horario}_${tipo}.csv`);
+    link.style.visibility = 'hidden';
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const confirmados = filtrarAlunos(aula.confirmados || []);
+  const listaEspera = filtrarAlunos(aula.listaEspera || []);
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="text-black flex items-center gap-2">
+            <Users className="w-5 h-5" />
+            {diasSemana[aula.dia_semana]} - {aula.horario} ({aula.nivel})
+          </DialogTitle>
+          <div className="text-sm text-black/60">
+            Professor: {aula.professor_nome}
+            {aula.data_aula && (
+              <span className="ml-2">
+                • {format(new Date(aula.data_aula), 'dd/MM/yyyy', { locale: ptBR })}
+              </span>
+            )}
+          </div>
+        </DialogHeader>
+
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+          <TabsList className="grid w-full grid-cols-2 bg-white/50 border border-black/20">
+            <TabsTrigger value="confirmados" className="flex items-center gap-2">
+              <Check className="w-4 h-4" />
+              Confirmados ({confirmados.length})
+            </TabsTrigger>
+            <TabsTrigger value="lista-espera" className="flex items-center gap-2">
+              <Clock className="w-4 h-4" />
+              Lista de Espera ({listaEspera.length})
+            </TabsTrigger>
+          </TabsList>
+
+          <div className="flex items-center gap-4 mb-4">
+            <div className="relative flex-1">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-black/40" />
+              <Input
+                placeholder="Buscar por nome, matrícula ou e-mail..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10 border-black/30"
+              />
+            </div>
+            <Button
+              variant="outline"
+              onClick={() => exportarCSV(
+                activeTab === 'confirmados' ? confirmados : listaEspera,
+                activeTab
+              )}
+              className="border-black/30 text-black hover:bg-yellow-50"
+            >
+              <Download className="w-4 h-4 mr-2" />
+              Exportar CSV
+            </Button>
+          </div>
+
+          <TabsContent value="confirmados">
+            <div className="border border-black/20 rounded-lg overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-gray-50">
+                    <TableHead className="text-black font-medium">Matrícula</TableHead>
+                    <TableHead className="text-black font-medium">Nome Completo</TableHead>
+                    <TableHead className="text-black font-medium">E-mail</TableHead>
+                    <TableHead className="text-black font-medium">Presença</TableHead>
+                    <TableHead className="text-black font-medium">Data Inscrição</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {confirmados.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center py-8 text-black/60">
+                        {searchTerm ? 'Nenhum resultado encontrado' : 'Nenhum aluno confirmado'}
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    confirmados.map((aluno) => (
+                      <TableRow key={aluno.id}>
+                        <TableCell className="font-medium text-black">
+                          {aluno.aluno?.matricula || 'N/A'}
+                        </TableCell>
+                        <TableCell className="text-black">
+                          {aluno.aluno?.nome || 'Nome não disponível'}
+                        </TableCell>
+                        <TableCell className="text-black">
+                          {aluno.aluno?.email || 'N/A'}
+                        </TableCell>
+                        <TableCell>
+                          {aluno.presenca === null ? (
+                            <Badge variant="outline" className="border-gray-300 text-gray-600">
+                              Não marcado
+                            </Badge>
+                          ) : aluno.presenca ? (
+                            <Badge className="bg-green-500 text-white">
+                              <Check className="w-3 h-3 mr-1" />
+                              Presente
+                            </Badge>
+                          ) : (
+                            <Badge className="bg-red-500 text-white">
+                              <X className="w-3 h-3 mr-1" />
+                              Falta
+                            </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-black text-sm">
+                          {formatarTimestamp(aluno.timestamp_inscricao)}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="lista-espera">
+            <div className="border border-black/20 rounded-lg overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-gray-50">
+                    <TableHead className="text-black font-medium">Posição</TableHead>
+                    <TableHead className="text-black font-medium">Matrícula</TableHead>
+                    <TableHead className="text-black font-medium">Nome Completo</TableHead>
+                    <TableHead className="text-black font-medium">E-mail</TableHead>
+                    <TableHead className="text-black font-medium">Data Inscrição</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {listaEspera.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center py-8 text-black/60">
+                        {searchTerm ? 'Nenhum resultado encontrado' : 'Nenhum aluno na lista de espera'}
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    listaEspera.map((aluno, index) => (
+                      <TableRow key={aluno.id}>
+                        <TableCell>
+                          <Badge className="bg-orange-500 text-white min-w-[32px] h-6 flex items-center justify-center">
+                            {index + 1}º
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="font-medium text-black">
+                          {aluno.aluno?.matricula || 'N/A'}
+                        </TableCell>
+                        <TableCell className="text-black">
+                          {aluno.aluno?.nome || 'Nome não disponível'}
+                        </TableCell>
+                        <TableCell className="text-black">
+                          {aluno.aluno?.email || 'N/A'}
+                        </TableCell>
+                        <TableCell className="text-black text-sm">
+                          {formatarTimestamp(aluno.timestamp_inscricao)}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </TabsContent>
+        </Tabs>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+export default HistoricoAulaModal;
