@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -53,7 +52,13 @@ const InscricoesDetalhes = ({ aulaId, diaSemana, horario, minhaInscricao }: Insc
 
       if (error) throw error;
 
-      setInscricoes(data || []);
+      // Type cast the status field to match our interface
+      const inscricoesTyped = (data || []).map(inscricao => ({
+        ...inscricao,
+        status: inscricao.status as 'confirmado' | 'espera'
+      }));
+
+      setInscricoes(inscricoesTyped);
     } catch (error) {
       console.error('Erro ao buscar detalhes das inscrições:', error);
     } finally {
