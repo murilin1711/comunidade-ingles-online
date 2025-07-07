@@ -141,10 +141,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.error('Aluno error:', alunoError);
       console.error('Professor error:', professorError);
       console.error('Admin error:', adminError);
+      
+      // Set a default userData to prevent null access
       setUserData(null);
     } catch (error) {
       console.error('Error fetching user profile:', error);
       setUserData(null);
+    } finally {
+      setLoading(false);
     }
   };
 

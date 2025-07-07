@@ -52,11 +52,13 @@ const InscricoesDetalhes = ({ aulaId, diaSemana, horario, minhaInscricao }: Insc
 
       if (error) throw error;
 
-      // Type cast the status field to match our interface
-      const inscricoesTyped = (data || []).map(inscricao => ({
-        ...inscricao,
-        status: inscricao.status as 'confirmado' | 'espera'
-      }));
+      // Type cast the status field and filter out inscricoes with null aluno
+      const inscricoesTyped = (data || [])
+        .filter(inscricao => inscricao.aluno !== null) // Filter out null aluno
+        .map(inscricao => ({
+          ...inscricao,
+          status: inscricao.status as 'confirmado' | 'espera'
+        }));
 
       setInscricoes(inscricoesTyped);
     } catch (error) {

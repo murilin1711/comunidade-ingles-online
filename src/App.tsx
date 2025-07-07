@@ -5,6 +5,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import ErrorBoundary from "@/components/ErrorBoundary";
+import LoadingScreen from "@/components/LoadingScreen";
 import Login from "./pages/Login";
 import Cadastro from "./pages/Cadastro";
 import CadastroFuncionario from "./pages/CadastroFuncionario";
@@ -20,7 +22,7 @@ const ProtectedRoute = ({ children, requiredRole }: { children: React.ReactNode,
   const { user, userData, loading } = useAuth();
   
   if (loading) {
-    return <div className="min-h-screen flex items-center justify-center">Carregando...</div>;
+    return <LoadingScreen message="Verificando autenticação..." />;
   }
   
   if (!user || !userData) {
@@ -41,7 +43,7 @@ const PublicRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, userData, loading } = useAuth();
   
   if (loading) {
-    return <div className="min-h-screen flex items-center justify-center">Carregando...</div>;
+    return <LoadingScreen message="Carregando..." />;
   }
   
   if (user && userData) {
@@ -75,22 +77,30 @@ const AppContent = () => {
       } />
       <Route path="/dashboard-aluno" element={
         <ProtectedRoute requiredRole="aluno">
-          <DashboardAluno />
+          <ErrorBoundary>
+            <DashboardAluno />
+          </ErrorBoundary>
         </ProtectedRoute>
       } />
       <Route path="/dashboard-professor" element={
         <ProtectedRoute requiredRole="professor">
-          <DashboardProfessor />
+          <ErrorBoundary>
+            <DashboardProfessor />
+          </ErrorBoundary>
         </ProtectedRoute>
       } />
       <Route path="/dashboard-admin" element={
         <ProtectedRoute requiredRole="admin">
-          <DashboardAdmin />
+          <ErrorBoundary>
+            <DashboardAdmin />
+          </ErrorBoundary>
         </ProtectedRoute>
       } />
       <Route path="/agendamento" element={
         <ProtectedRoute requiredRole="aluno">
-          <AgendamentoAulas />
+          <ErrorBoundary>
+            <AgendamentoAulas />
+          </ErrorBoundary>
         </ProtectedRoute>
       } />
       <Route path="*" element={<NotFound />} />
