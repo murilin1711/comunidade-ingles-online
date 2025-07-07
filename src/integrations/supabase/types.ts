@@ -428,6 +428,10 @@ export type Database = {
         Args: { aula_uuid: string }
         Returns: undefined
       }
+      verificar_inscricao_semanal: {
+        Args: { aluno_uuid: string; aula_uuid: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never
