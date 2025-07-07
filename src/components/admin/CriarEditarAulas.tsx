@@ -180,7 +180,7 @@ const CriarEditarAulas = () => {
                 <SelectTrigger className="border-black/30">
                   <SelectValue placeholder="Selecione um professor" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-white z-50">
                   {professores.map((professor) => (
                     <SelectItem key={professor.user_id} value={professor.user_id}>
                       {professor.nome}

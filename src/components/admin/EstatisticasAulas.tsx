@@ -128,7 +128,7 @@ const EstatisticasAulas = () => {
                 <SelectTrigger className="border-black/30">
                   <SelectValue placeholder="Todos os professores" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-white z-50">
                   <SelectItem value="todos">Todos os professores</SelectItem>
                   {professores.map((professor) => (
                     <SelectItem key={professor.id} value={professor.id}>
