@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      administradores: {
+        Row: {
+          atualizado_em: string
+          criado_em: string
+          email: string
+          id: string
+          matricula: string
+          nome: string
+          telefone: string
+          user_id: string
+        }
+        Insert: {
+          atualizado_em?: string
+          criado_em?: string
+          email: string
+          id?: string
+          matricula: string
+          nome: string
+          telefone: string
+          user_id: string
+        }
+        Update: {
+          atualizado_em?: string
+          criado_em?: string
+          email?: string
+          id?: string
+          matricula?: string
+          nome?: string
+          telefone?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       alunos: {
         Row: {
           atualizado_em: string
@@ -240,7 +273,6 @@ export type Database = {
           id: string
           matricula: string
           nome: string
-          role: string
           telefone: string
           user_id: string
         }
@@ -251,7 +283,6 @@ export type Database = {
           id?: string
           matricula: string
           nome: string
-          role?: string
           telefone: string
           user_id: string
         }
@@ -262,7 +293,6 @@ export type Database = {
           id?: string
           matricula?: string
           nome?: string
-          role?: string
           telefone?: string
           user_id?: string
         }

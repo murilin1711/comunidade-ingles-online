@@ -78,7 +78,7 @@ export const useAdminStats = () => {
         .order('dia_semana', { ascending: true })
         .order('horario', { ascending: true });
 
-      if (filtros.nivel) {
+      if (filtros.nivel && filtros.nivel !== 'todos') {
         query = query.eq('nivel', filtros.nivel);
       }
 
@@ -143,7 +143,7 @@ export const useAdminStats = () => {
         `)
         .eq('ativa', true);
 
-      if (filtros.nivel) {
+      if (filtros.nivel && filtros.nivel !== 'todos') {
         query = query.eq('nivel', filtros.nivel);
       }
 

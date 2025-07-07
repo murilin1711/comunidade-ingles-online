@@ -24,9 +24,9 @@ export const useConfiguracoesAdmin = () => {
       const { data, error } = await supabase
         .from('configuracoes_sistema')
         .select('*')
-        .single();
+        .maybeSingle();
 
-      if (error && error.code !== 'PGRST116') {
+      if (error) {
         throw error;
       }
 
@@ -82,7 +82,7 @@ export const useConfiguracoesAdmin = () => {
         .from('configuracoes_sistema')
         .upsert(dbData)
         .select()
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
 

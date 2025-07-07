@@ -9,7 +9,7 @@ import { Trophy, TrendingUp, Users, Calendar } from 'lucide-react';
 const EstatisticasProfessores = () => {
   const [filtros, setFiltros] = useState({
     periodo: '30',
-    nivel: ''
+    nivel: 'todos'
   });
 
   const { 

@@ -113,14 +113,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           nome: professorData.nome,
           email: professorData.email,
           telefone: professorData.telefone,
-          role: professorData.role as 'professor' | 'admin' // Usar o role da base de dados
+          role: 'professor'
         });
         return;
       }
 
-      console.error('User profile not found in either table');
+      // If not found in professores, try administradores table
+      let { data: adminData, error: adminError } = await supabase
+        .from('administradores')
+        .select('*')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      if (adminData) {
+        console.log('Found admin data:', adminData);
+        setUserData({
+          matricula: adminData.matricula,
+          nome: adminData.nome,
+          email: adminData.email,
+          telefone: adminData.telefone,
+          role: 'admin'
+        });
+        return;
+      }
+
+      console.error('User profile not found in any table');
       console.error('Aluno error:', alunoError);
       console.error('Professor error:', professorError);
+      console.error('Admin error:', adminError);
       setUserData(null);
     } catch (error) {
       console.error('Error fetching user profile:', error);
@@ -182,17 +202,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           console.error('Error inserting aluno:', insertError);
           throw insertError;
         }
-      } else {
-        // Inserir professor ou admin na tabela professores
+      } else if (userInfo.role === 'professor') {
+        // Inserir professor na tabela professores
         const { error: insertError } = await supabase
           .from('professores')
-          .insert({
-            ...userData,
-            role: userInfo.role // Preserva se é 'professor' ou 'admin'
-          });
+          .insert(userData);
 
         if (insertError) {
-          console.error('Error inserting professor/admin:', insertError);
+          console.error('Error inserting professor:', insertError);
+          throw insertError;
+        }
+      } else if (userInfo.role === 'admin') {
+        // Inserir admin na tabela administradores
+        const { error: insertError } = await supabase
+          .from('administradores')
+          .insert(userData);
+
+        if (insertError) {
+          console.error('Error inserting admin:', insertError);
           throw insertError;
         }
       }

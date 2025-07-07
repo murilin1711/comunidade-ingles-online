@@ -13,8 +13,8 @@ const EstatisticasAulas = () => {
   const [filtros, setFiltros] = useState({
     dataInicio: '',
     dataFim: '',
-    professor: '',
-    nivel: ''
+    professor: 'todos',
+    nivel: 'todos'
   });
 
   const { 
