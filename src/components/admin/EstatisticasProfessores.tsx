@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { useAdminStats } from '@/hooks/useAdminStats';
+import { useAdminStats } from '@/hooks/admin/useAdminStats';
 import { Trophy, TrendingUp, Users, Calendar } from 'lucide-react';
 
 const EstatisticasProfessores = () => {

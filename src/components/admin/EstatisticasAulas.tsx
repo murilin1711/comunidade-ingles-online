@@ -4,15 +4,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Label } from '@/components/ui/label';
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { useAdminStats } from '@/hooks/useAdminStats';
+import { useAdminStats } from '@/hooks/admin/useAdminStats';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Calendar, Clock, Users, UserCheck, UserX, UserMinus, ChevronDown, Check } from 'lucide-react';
+import { Calendar, Clock, Users, UserCheck, UserX, UserMinus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import HistoricoAulaCard from './HistoricoAulaCard';
 
@@ -24,9 +19,6 @@ const EstatisticasAulas = () => {
     nivel: 'todos'
   });
   
-  const [professorSelecionado, setProfessorSelecionado] = useState('todos');
-  const [todosProfessoresChecked, setTodosProfessoresChecked] = useState(true);
-  const [openProfessorPopover, setOpenProfessorPopover] = useState(false);
   const [ordenacao, setOrdenacao] = useState<'recente' | 'antiga'>('recente');
 
   const { 
@@ -46,30 +38,6 @@ const EstatisticasAulas = () => {
     fetchHistoricoAulas(filtros);
   }, [filtros, fetchHistoricoAulas]);
 
-  const handleProfessorChange = (value: string) => {
-    if (value === 'todos') {
-      setTodosProfessoresChecked(true);
-      setProfessorSelecionado('todos');
-      setFiltros({...filtros, professor: 'todos'});
-    } else {
-      setTodosProfessoresChecked(false);
-      setProfessorSelecionado(value);
-      setFiltros({...filtros, professor: value});
-    }
-    setOpenProfessorPopover(false);
-  };
-
-  const handleTodosProfessoresToggle = (checked: boolean) => {
-    setTodosProfessoresChecked(checked);
-    if (checked) {
-      setProfessorSelecionado('todos');
-      setFiltros({...filtros, professor: 'todos'});
-    }
-  };
-
-  const professorSelecionadoNome = professorSelecionado === 'todos' 
-    ? 'Todos os professores' 
-    : professores.find(p => p.id === professorSelecionado)?.nome || 'Selecionar professor';
 
   const aulasOrdenadas = [...historicoAulas].sort((a, b) => {
     const dataA = a.data_aula ? new Date(a.data_aula) : new Date(0);
@@ -119,75 +87,22 @@ const EstatisticasAulas = () => {
               <label className="text-sm font-medium text-black mb-2 block">
                 Professor
               </label>
-              <div className="space-y-3">
-                {/* Checkbox Todos os Professores */}
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="todos-professores"
-                    checked={todosProfessoresChecked}
-                    onCheckedChange={handleTodosProfessoresToggle}
-                  />
-                  <Label
-                    htmlFor="todos-professores"
-                    className="text-sm text-black cursor-pointer"
-                  >
-                    Todos os professores
-                  </Label>
-                </div>
-                
-                {/* Dropdown Searchable */}
-                <Popover open={openProfessorPopover} onOpenChange={setOpenProfessorPopover}>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      role="combobox"
-                      aria-expanded={openProfessorPopover}
-                      className="w-full justify-between border-black/30 text-black"
-                      disabled={todosProfessoresChecked}
-                    >
-                      {professorSelecionadoNome}
-                      <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-full p-0">
-                    <Command>
-                      <CommandInput placeholder="Buscar professor..." />
-                      <CommandList>
-                        <CommandEmpty>Nenhum professor encontrado.</CommandEmpty>
-                        <CommandGroup>
-                          <CommandItem
-                            value="todos"
-                            onSelect={() => handleProfessorChange('todos')}
-                          >
-                            <Check
-                              className={cn(
-                                "mr-2 h-4 w-4",
-                                professorSelecionado === 'todos' ? "opacity-100" : "opacity-0"
-                              )}
-                            />
-                            Todos os professores
-                          </CommandItem>
-                          {professores.map((professor) => (
-                            <CommandItem
-                              key={professor.id}
-                              value={professor.nome}
-                              onSelect={() => handleProfessorChange(professor.id)}
-                            >
-                              <Check
-                                className={cn(
-                                  "mr-2 h-4 w-4",
-                                  professorSelecionado === professor.id ? "opacity-100" : "opacity-0"
-                                )}
-                              />
-                              {professor.nome}
-                            </CommandItem>
-                          ))}
-                        </CommandGroup>
-                      </CommandList>
-                    </Command>
-                  </PopoverContent>
-                </Popover>
-              </div>
+              <Select 
+                value={filtros.professor} 
+                onValueChange={(value) => setFiltros({...filtros, professor: value})}
+              >
+                <SelectTrigger className="border-black/30">
+                  <SelectValue placeholder="Todos os professores" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todos os professores</SelectItem>
+                  {professores.map((professor) => (
+                    <SelectItem key={professor.id} value={professor.id}>
+                      {professor.nome}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div>
               <label className="text-sm font-medium text-black mb-2 block">
