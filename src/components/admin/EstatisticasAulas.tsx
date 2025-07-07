@@ -20,10 +20,16 @@ const EstatisticasAulas = () => {
 
   const { 
     historicoAulas, 
+    professores,
     estatisticasPresenca, 
     loading, 
-    fetchHistoricoAulas 
+    fetchHistoricoAulas,
+    fetchProfessores
   } = useAdminStats();
+
+  useEffect(() => {
+    fetchProfessores();
+  }, [fetchProfessores]);
 
   useEffect(() => {
     fetchHistoricoAulas(filtros);
@@ -80,7 +86,11 @@ const EstatisticasAulas = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="todos">Todos os professores</SelectItem>
-                  {/* Será preenchido dinamicamente */}
+                  {professores.map((professor) => (
+                    <SelectItem key={professor.id} value={professor.id}>
+                      {professor.nome}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>

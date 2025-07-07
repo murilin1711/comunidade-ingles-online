@@ -46,6 +46,7 @@ interface EstatisticasProfessor {
 
 export const useAdminStats = () => {
   const [historicoAulas, setHistoricoAulas] = useState<AulaHistorico[]>([]);
+  const [professores, setProfessores] = useState<Array<{id: string, nome: string}>>([]);
   const [estatisticasPresenca, setEstatisticasPresenca] = useState<EstatisticasPresenca>({
     taxaPresenca: 0,
     faltasSemAviso: 0,
@@ -67,11 +68,13 @@ export const useAdminStats = () => {
           nivel,
           capacidade,
           professor_nome,
+          professor_id,
+          data_aula,
           inscricoes!inscricoes_aula_id_fkey(
             id,
             status,
             presenca,
-            aluno:alunos!inscricoes_aluno_id_fkey(nome, matricula)
+            aluno:alunos!inscricoes_aluno_id_fkey(nome, matricula, email)
           )
         `)
         .eq('ativa', true)
@@ -80,6 +83,18 @@ export const useAdminStats = () => {
 
       if (filtros.nivel && filtros.nivel !== 'todos') {
         query = query.eq('nivel', filtros.nivel);
+      }
+
+      if (filtros.professor && filtros.professor !== 'todos') {
+        query = query.eq('professor_id', filtros.professor);
+      }
+
+      if (filtros.dataInicio) {
+        query = query.gte('data_aula', filtros.dataInicio);
+      }
+
+      if (filtros.dataFim) {
+        query = query.lte('data_aula', filtros.dataFim);
       }
 
       const { data: aulasData, error } = await query;
@@ -203,13 +218,36 @@ export const useAdminStats = () => {
     }
   }, []);
 
+  const fetchProfessores = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from('professores')
+        .select('id, user_id, nome')
+        .order('nome');
+
+      if (error) throw error;
+
+      const professoresFormatados = data?.map(prof => ({
+        id: prof.user_id,
+        nome: prof.nome
+      })) || [];
+
+      setProfessores(professoresFormatados);
+    } catch (error) {
+      console.error('Erro ao buscar professores:', error);
+      toast.error('Erro ao carregar lista de professores');
+    }
+  }, []);
+
   return {
     historicoAulas,
+    professores,
     estatisticasPresenca,
     estatisticasProfessores,
     rankingProfessores,
     loading,
     fetchHistoricoAulas,
-    fetchEstatisticasProfessores
+    fetchEstatisticasProfessores,
+    fetchProfessores
   };
 };
