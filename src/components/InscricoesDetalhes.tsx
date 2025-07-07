@@ -33,7 +33,7 @@ const InscricoesDetalhes = ({ aulaId, diaSemana, horario, minhaInscricao }: Insc
   const { user } = useAuth();
 
   const fetchInscricoes = async () => {
-    if (!mostrarDetalhes || !minhaInscricao) return;
+    if (!mostrarDetalhes) return;
 
     setLoading(true);
     try {
@@ -70,7 +70,7 @@ const InscricoesDetalhes = ({ aulaId, diaSemana, horario, minhaInscricao }: Insc
 
   useEffect(() => {
     fetchInscricoes();
-  }, [mostrarDetalhes, aulaId, minhaInscricao]);
+  }, [mostrarDetalhes, aulaId]);
 
   // Real-time updates para sincronização de dados
   useEffect(() => {
@@ -97,9 +97,7 @@ const InscricoesDetalhes = ({ aulaId, diaSemana, horario, minhaInscricao }: Insc
     };
   }, [mostrarDetalhes, aulaId]);
 
-  if (!minhaInscricao) {
-    return null;
-  }
+  // Sempre mostrar o componente, não apenas quando há inscrição do usuário
 
   const inscricoesConfirmadas = inscricoes.filter(i => i.status === 'confirmado');
   const inscricoesEspera = inscricoes.filter(i => i.status === 'espera');

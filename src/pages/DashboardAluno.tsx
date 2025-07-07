@@ -482,13 +482,6 @@ const DashboardAluno = () => {
                   <div className="flex gap-2">
                     {jaInscrito ? (
                       <>
-                        <Button 
-                          variant="destructive"
-                          onClick={() => handleCancelarInscricao(aula.id)}
-                          disabled={loading}
-                        >
-                          Cancelar Inscrição
-                        </Button>
                         {aula.minha_inscricao?.status === 'confirmado' && (
                           <AvisarFaltaModal
                             aulaId={aula.id}
@@ -515,15 +508,13 @@ const DashboardAluno = () => {
                     )}
                   </div>
                   
-                  {/* Mostrar detalhes das inscrições apenas se o aluno estiver inscrito */}
-                  {jaInscrito && (
-                    <InscricoesDetalhes
-                      aulaId={aula.id}
-                      diaSemana={diasSemana[aula.dia_semana]}
-                      horario={aula.horario}
-                      minhaInscricao={aula.minha_inscricao}
-                    />
-                  )}
+                  {/* Mostrar detalhes das inscrições sempre */}
+                  <InscricoesDetalhes
+                    aulaId={aula.id}
+                    diaSemana={diasSemana[aula.dia_semana]}
+                    horario={aula.horario}
+                    minhaInscricao={aula.minha_inscricao}
+                  />
                 </CardContent>
               </Card>
             );

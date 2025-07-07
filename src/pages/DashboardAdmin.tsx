@@ -21,7 +21,7 @@ const DashboardAdmin = () => {
     setRefreshKey(prev => prev + 1);
   };
 
-  // Real-time updates com polling mais frequente para sincronização imediata
+  // Real-time updates para sincronização automática
   useEffect(() => {
     const channel = supabase
       .channel('admin-dashboard-changes')
@@ -51,14 +51,8 @@ const DashboardAdmin = () => {
       )
       .subscribe();
 
-    // Polling adicional para garantir sincronização (a cada 3 segundos)
-    const pollingInterval = setInterval(() => {
-      setRefreshKey(prev => prev + 1);
-    }, 3000);
-
     return () => {
       supabase.removeChannel(channel);
-      clearInterval(pollingInterval);
     };
   }, []);
 
