@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button';
 import { LogOut, BarChart3, Users, Settings } from 'lucide-react';
 import EstatisticasAulas from '@/components/admin/EstatisticasAulas';
 import EstatisticasProfessores from '@/components/admin/EstatisticasProfessores';
-import ConfiguracoesSistema from '@/components/admin/ConfiguracoesSistema';
+import GerenciarSuspensoes from '@/components/admin/GerenciarSuspensoes';
+import GerenciarAulasAdmin from '@/components/admin/GerenciarAulasAdmin';
 
 const DashboardAdmin = () => {
   const { user, userData, logout } = useAuth();
@@ -52,9 +53,9 @@ const DashboardAdmin = () => {
         </div>
 
         {/* Main Content */}
-        <Tabs defaultValue="aulas" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3 bg-white/50 border border-black/20">
-            <TabsTrigger value="aulas" className="flex items-center gap-2">
+        <Tabs defaultValue="historico" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-4 bg-white/50 border border-black/20">
+            <TabsTrigger value="historico" className="flex items-center gap-2">
               <BarChart3 className="w-4 h-4" />
               Histórico de Aulas
             </TabsTrigger>
@@ -62,13 +63,17 @@ const DashboardAdmin = () => {
               <Users className="w-4 h-4" />
               Desempenho dos Professores
             </TabsTrigger>
-            <TabsTrigger value="configuracoes" className="flex items-center gap-2">
+            <TabsTrigger value="suspensoes" className="flex items-center gap-2">
               <Settings className="w-4 h-4" />
-              Regras de Suspensão
+              Suspensões
+            </TabsTrigger>
+            <TabsTrigger value="aulas" className="flex items-center gap-2">
+              <Settings className="w-4 h-4" />
+              Aulas
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="aulas">
+          <TabsContent value="historico">
             <EstatisticasAulas />
           </TabsContent>
 
@@ -76,8 +81,12 @@ const DashboardAdmin = () => {
             <EstatisticasProfessores />
           </TabsContent>
 
-          <TabsContent value="configuracoes">
-            <ConfiguracoesSistema />
+          <TabsContent value="suspensoes">
+            <GerenciarSuspensoes />
+          </TabsContent>
+
+          <TabsContent value="aulas">
+            <GerenciarAulasAdmin />
           </TabsContent>
         </Tabs>
       </div>

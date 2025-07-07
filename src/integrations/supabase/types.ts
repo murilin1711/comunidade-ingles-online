@@ -142,6 +142,60 @@ export type Database = {
           },
         ]
       }
+      avisos_falta: {
+        Row: {
+          aluno_id: string
+          atualizado_em: string
+          aula_id: string
+          criado_em: string
+          data_aplicacao: string | null
+          data_aviso: string
+          id: string
+          semanas_suspensao: number | null
+          status: string
+          tipo_suspensao: string | null
+        }
+        Insert: {
+          aluno_id: string
+          atualizado_em?: string
+          aula_id: string
+          criado_em?: string
+          data_aplicacao?: string | null
+          data_aviso?: string
+          id?: string
+          semanas_suspensao?: number | null
+          status?: string
+          tipo_suspensao?: string | null
+        }
+        Update: {
+          aluno_id?: string
+          atualizado_em?: string
+          aula_id?: string
+          criado_em?: string
+          data_aplicacao?: string | null
+          data_aviso?: string
+          id?: string
+          semanas_suspensao?: number | null
+          status?: string
+          tipo_suspensao?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "avisos_falta_aluno_id_fkey"
+            columns: ["aluno_id"]
+            isOneToOne: false
+            referencedRelation: "alunos"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "avisos_falta_aula_id_fkey"
+            columns: ["aula_id"]
+            isOneToOne: false
+            referencedRelation: "aulas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       configuracoes_sistema: {
         Row: {
           atualizado_em: string
