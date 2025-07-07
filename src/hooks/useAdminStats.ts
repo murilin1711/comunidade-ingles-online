@@ -1,3 +1,4 @@
+
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/sonner';
@@ -222,7 +223,7 @@ export const useAdminStats = () => {
     try {
       const { data, error } = await supabase
         .from('professores')
-        .select('id, user_id, nome')
+        .select('user_id, nome')
         .order('nome');
 
       if (error) throw error;
