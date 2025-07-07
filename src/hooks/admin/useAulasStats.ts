@@ -30,6 +30,7 @@ export const useAulasStats = () => {
             id,
             status,
             presenca,
+            timestamp_inscricao,
             aluno:alunos!inscricoes_aluno_id_fkey(nome, matricula, email)
           )
         `)

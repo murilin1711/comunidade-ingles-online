@@ -18,10 +18,50 @@ export interface AulaHistorico {
   capacidade: number;
   professor_nome: string;
   data_aula?: string;
-  confirmados?: any[];
-  presentes?: any[];
-  faltas?: any[];
-  listaEspera?: any[];
+  confirmados?: {
+    id: string;
+    status: string;
+    presenca: boolean | null;
+    timestamp_inscricao: string;
+    aluno: {
+      nome: string;
+      matricula: string;
+      email: string;
+    };
+  }[];
+  presentes?: {
+    id: string;
+    status: string;
+    presenca: boolean | null;
+    timestamp_inscricao: string;
+    aluno: {
+      nome: string;
+      matricula: string;
+      email: string;
+    };
+  }[];
+  faltas?: {
+    id: string;
+    status: string;
+    presenca: boolean | null;
+    timestamp_inscricao: string;
+    aluno: {
+      nome: string;
+      matricula: string;
+      email: string;
+    };
+  }[];
+  listaEspera?: {
+    id: string;
+    status: string;
+    presenca: boolean | null;
+    timestamp_inscricao: string;
+    aluno: {
+      nome: string;
+      matricula: string;
+      email: string;
+    };
+  }[];
 }
 
 export interface EstatisticasPresenca {
