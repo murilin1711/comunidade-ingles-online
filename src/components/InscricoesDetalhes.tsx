@@ -79,7 +79,8 @@ const InscricoesDetalhes = ({ aulaId, diaSemana, horario, minhaInscricao }: Insc
 
   const formatarTimestamp = (timestamp: string) => {
     const data = new Date(timestamp);
-    return data.toLocaleString('pt-BR', {
+    const milissegundos = data.getMilliseconds().toString().padStart(3, '0');
+    const dataFormatada = data.toLocaleString('pt-BR', {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',
@@ -87,6 +88,7 @@ const InscricoesDetalhes = ({ aulaId, diaSemana, horario, minhaInscricao }: Insc
       minute: '2-digit',
       second: '2-digit'
     });
+    return `${dataFormatada}.${milissegundos}`;
   };
 
   const isMinhaInscricao = (inscricao: InscricaoDetalhada) => {

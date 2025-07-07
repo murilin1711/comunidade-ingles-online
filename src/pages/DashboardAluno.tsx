@@ -126,15 +126,46 @@ const DashboardAluno = () => {
       const aula = aulas.find(a => a.id === aulaId);
       if (!aula) throw new Error('Aula não encontrada');
 
-      const status = aula.inscricoes_count < aula.capacidade ? 'confirmado' : 'espera';
-      
-      const { error } = await supabase
+      // Determinar status usando a função do banco
+      const { data: statusData, error: statusError } = await supabase
+        .rpc('determinar_status_inscricao', {
+          aula_uuid: aulaId
+        });
+
+      if (statusError) throw statusError;
+
+      const status = statusData as 'confirmado' | 'espera';
+      const timestamp = new Date();
+
+      // Atualizar UI imediatamente (otimistic update)
+      const novaInscricao = {
+        id: 'temp-' + Date.now(),
+        status: status
+      };
+
+      setAulas(prevAulas => 
+        prevAulas.map(a => 
+          a.id === aulaId 
+            ? { 
+                ...a, 
+                minha_inscricao: novaInscricao,
+                inscricoes_count: status === 'confirmado' ? a.inscricoes_count + 1 : a.inscricoes_count
+              }
+            : a
+        )
+      );
+
+      // Inserir no banco de dados
+      const { error, data } = await supabase
         .from('inscricoes')
         .insert({
           aula_id: aulaId,
           aluno_id: user.id,
-          status: status
-        });
+          status: status,
+          timestamp_inscricao: timestamp.toISOString()
+        })
+        .select('id, status')
+        .single();
 
       if (error) throw error;
 
@@ -144,9 +175,36 @@ const DashboardAluno = () => {
           : 'Você foi adicionado à lista de espera!'
       );
 
-      await fetchAulas();
+      // Atualizar com dados reais do banco
+      setAulas(prevAulas => 
+        prevAulas.map(a => 
+          a.id === aulaId 
+            ? { 
+                ...a, 
+                minha_inscricao: {
+                  id: data.id,
+                  status: data.status as 'confirmado' | 'espera'
+                }
+              }
+            : a
+        )
+      );
+
     } catch (error: any) {
       console.error('Erro na inscrição:', error);
+      
+      // Reverter UI em caso de erro
+      setAulas(prevAulas => 
+        prevAulas.map(a => 
+          a.id === aulaId 
+            ? { 
+                ...a, 
+                minha_inscricao: undefined,
+                inscricoes_count: a.inscricoes_count
+              }
+            : a
+        )
+      );
       
       if (error.code === '23505') { // Unique constraint violation
         toast.error('Você já está inscrito nesta aula');

@@ -350,6 +350,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      aluno_inscrito_na_aula: {
+        Args: { aula_uuid: string; aluno_uuid: string }
+        Returns: boolean
+      }
       aplicar_suspensao: {
         Args: {
           aluno_uuid: string
@@ -361,6 +365,10 @@ export type Database = {
       contar_participacoes: {
         Args: { aluno_uuid: string; dias_param: number }
         Returns: number
+      }
+      determinar_status_inscricao: {
+        Args: { aula_uuid: string }
+        Returns: string
       }
       promover_lista_espera: {
         Args: { aula_uuid: string }
