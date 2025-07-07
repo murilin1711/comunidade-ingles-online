@@ -389,7 +389,7 @@ const DashboardAluno = () => {
                 Você poderá se inscrever nas aulas disponíveis apenas durante este horário.
               </p>
               <p className="text-sm mt-2 font-medium">
-                <strong>Nova regra:</strong> Apenas uma inscrição por semana é permitida.
+                <strong>Regras:</strong> Apenas uma inscrição por semana é permitida.
               </p>
             </div>
           </CardContent>
