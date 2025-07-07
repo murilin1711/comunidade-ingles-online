@@ -3,11 +3,17 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Label } from '@/components/ui/label';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useAdminStats } from '@/hooks/useAdminStats';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Calendar, Clock, Users, UserCheck, UserX, UserMinus } from 'lucide-react';
+import { Calendar, Clock, Users, UserCheck, UserX, UserMinus, ChevronDown, Check } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import HistoricoAulaCard from './HistoricoAulaCard';
 
 const EstatisticasAulas = () => {
@@ -17,6 +23,11 @@ const EstatisticasAulas = () => {
     professor: 'todos',
     nivel: 'todos'
   });
+  
+  const [professorSelecionado, setProfessorSelecionado] = useState('todos');
+  const [todosProfessoresChecked, setTodosProfessoresChecked] = useState(true);
+  const [openProfessorPopover, setOpenProfessorPopover] = useState(false);
+  const [ordenacao, setOrdenacao] = useState<'recente' | 'antiga'>('recente');
 
   const { 
     historicoAulas, 
@@ -34,6 +45,37 @@ const EstatisticasAulas = () => {
   useEffect(() => {
     fetchHistoricoAulas(filtros);
   }, [filtros, fetchHistoricoAulas]);
+
+  const handleProfessorChange = (value: string) => {
+    if (value === 'todos') {
+      setTodosProfessoresChecked(true);
+      setProfessorSelecionado('todos');
+      setFiltros({...filtros, professor: 'todos'});
+    } else {
+      setTodosProfessoresChecked(false);
+      setProfessorSelecionado(value);
+      setFiltros({...filtros, professor: value});
+    }
+    setOpenProfessorPopover(false);
+  };
+
+  const handleTodosProfessoresToggle = (checked: boolean) => {
+    setTodosProfessoresChecked(checked);
+    if (checked) {
+      setProfessorSelecionado('todos');
+      setFiltros({...filtros, professor: 'todos'});
+    }
+  };
+
+  const professorSelecionadoNome = professorSelecionado === 'todos' 
+    ? 'Todos os professores' 
+    : professores.find(p => p.id === professorSelecionado)?.nome || 'Selecionar professor';
+
+  const aulasOrdenadas = [...historicoAulas].sort((a, b) => {
+    const dataA = a.data_aula ? new Date(a.data_aula) : new Date(0);
+    const dataB = b.data_aula ? new Date(b.data_aula) : new Date(0);
+    return ordenacao === 'recente' ? dataB.getTime() - dataA.getTime() : dataA.getTime() - dataB.getTime();
+  });
 
   const diasSemana = [
     'Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'
@@ -77,22 +119,75 @@ const EstatisticasAulas = () => {
               <label className="text-sm font-medium text-black mb-2 block">
                 Professor
               </label>
-              <Select 
-                value={filtros.professor} 
-                onValueChange={(value) => setFiltros({...filtros, professor: value})}
-              >
-                <SelectTrigger className="border-black/30">
-                  <SelectValue placeholder="Todos os professores" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="todos">Todos os professores</SelectItem>
-                  {professores.map((professor) => (
-                    <SelectItem key={professor.id} value={professor.id}>
-                      {professor.nome}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="space-y-3">
+                {/* Checkbox Todos os Professores */}
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="todos-professores"
+                    checked={todosProfessoresChecked}
+                    onCheckedChange={handleTodosProfessoresToggle}
+                  />
+                  <Label
+                    htmlFor="todos-professores"
+                    className="text-sm text-black cursor-pointer"
+                  >
+                    Todos os professores
+                  </Label>
+                </div>
+                
+                {/* Dropdown Searchable */}
+                <Popover open={openProfessorPopover} onOpenChange={setOpenProfessorPopover}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={openProfessorPopover}
+                      className="w-full justify-between border-black/30 text-black"
+                      disabled={todosProfessoresChecked}
+                    >
+                      {professorSelecionadoNome}
+                      <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-full p-0">
+                    <Command>
+                      <CommandInput placeholder="Buscar professor..." />
+                      <CommandList>
+                        <CommandEmpty>Nenhum professor encontrado.</CommandEmpty>
+                        <CommandGroup>
+                          <CommandItem
+                            value="todos"
+                            onSelect={() => handleProfessorChange('todos')}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                professorSelecionado === 'todos' ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            Todos os professores
+                          </CommandItem>
+                          {professores.map((professor) => (
+                            <CommandItem
+                              key={professor.id}
+                              value={professor.nome}
+                              onSelect={() => handleProfessorChange(professor.id)}
+                            >
+                              <Check
+                                className={cn(
+                                  "mr-2 h-4 w-4",
+                                  professorSelecionado === professor.id ? "opacity-100" : "opacity-0"
+                                )}
+                              />
+                              {professor.nome}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+              </div>
             </div>
             <div>
               <label className="text-sm font-medium text-black mb-2 block">
@@ -178,10 +273,42 @@ const EstatisticasAulas = () => {
       {/* Histórico de Aulas em Cards */}
       <Card className="border-black/20">
         <CardHeader>
-          <CardTitle className="text-black flex items-center gap-2">
-            <Clock className="w-5 h-5" />
-            Histórico Detalhado das Aulas
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-black flex items-center gap-2">
+              <Clock className="w-5 h-5" />
+              Histórico Detalhado das Aulas
+            </CardTitle>
+            
+            {/* Segmented Buttons para Ordenação */}
+            <div className="flex items-center bg-gray-100 rounded-lg p-1">
+              <Button
+                variant={ordenacao === 'recente' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setOrdenacao('recente')}
+                className={cn(
+                  "h-8 px-3 text-xs font-medium transition-all",
+                  ordenacao === 'recente'
+                    ? "bg-white text-black shadow-sm"
+                    : "text-black/70 hover:text-black hover:bg-white/50"
+                )}
+              >
+                Mais recentes primeiro
+              </Button>
+              <Button
+                variant={ordenacao === 'antiga' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setOrdenacao('antiga')}
+                className={cn(
+                  "h-8 px-3 text-xs font-medium transition-all",
+                  ordenacao === 'antiga'
+                    ? "bg-white text-black shadow-sm"
+                    : "text-black/70 hover:text-black hover:bg-white/50"
+                )}
+              >
+                Mais antigas primeiro
+              </Button>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -200,7 +327,7 @@ const EstatisticasAulas = () => {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {historicoAulas.map((aula) => (
+              {aulasOrdenadas.map((aula) => (
                 <HistoricoAulaCard key={aula.id} aula={aula} />
               ))}
             </div>
