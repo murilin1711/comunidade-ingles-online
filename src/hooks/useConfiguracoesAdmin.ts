@@ -24,6 +24,8 @@ export const useConfiguracoesAdmin = () => {
       const { data, error } = await supabase
         .from('configuracoes_sistema')
         .select('*')
+        .order('atualizado_em', { ascending: false })
+        .limit(1)
         .maybeSingle();
 
       if (error) {
