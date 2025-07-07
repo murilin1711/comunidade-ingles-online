@@ -245,6 +245,8 @@ const DashboardAluno = () => {
       
       if (error.code === '23505') { // Unique constraint violation
         toast.error('Você já está inscrito nesta aula');
+      } else if (error.message?.includes('já possui inscrição em aula nesta semana')) {
+        toast.error('Você já possui uma inscrição nesta semana. Apenas uma inscrição por semana é permitida.');
       } else {
         toast.error('Erro ao fazer inscrição. Tente novamente.');
       }
@@ -385,6 +387,9 @@ const DashboardAluno = () => {
               <strong>Período de inscrições:</strong> As inscrições abrem toda segunda-feira às 12:30.
               <p className="text-sm mt-1">
                 Você poderá se inscrever nas aulas disponíveis apenas durante este horário.
+              </p>
+              <p className="text-sm mt-2 font-medium">
+                <strong>Nova regra:</strong> Apenas uma inscrição por semana é permitida.
               </p>
             </div>
           </CardContent>
