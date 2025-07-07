@@ -43,6 +43,39 @@ const GerenciarAulasAtivas = ({ onEditarAula }: GerenciarAulasAtivasProps) => {
     fetchAulas();
   }, []);
 
+  // Real-time updates
+  useEffect(() => {
+    const channel = supabase
+      .channel('aulas-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'aulas'
+        },
+        () => {
+          fetchAulas();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'inscricoes'
+        },
+        () => {
+          fetchAulas();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
   const fetchAulas = async () => {
     try {
       setLoading(true);
@@ -78,18 +111,41 @@ const GerenciarAulasAtivas = ({ onEditarAula }: GerenciarAulasAtivasProps) => {
 
   const toggleAulaAtiva = async (aulaId: string, novoStatus: boolean) => {
     try {
+      setLoading(true);
+      
+      // Update the aula status
       const { error } = await supabase
         .from('aulas')
         .update({ ativa: novoStatus })
         .eq('id', aulaId);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Erro na requisição:', error);
+        throw error;
+      }
 
-      toast.success(`Aula ${novoStatus ? 'ativada' : 'desativada'} com sucesso!`);
-      fetchAulas();
-    } catch (error) {
+      // Update local state immediately for better UX
+      setAulas(prevAulas => 
+        prevAulas.map(aula => 
+          aula.id === aulaId ? { ...aula, ativa: novoStatus } : aula
+        )
+      );
+
+      toast.success(`Aula ${novoStatus ? 'ativada' : 'inativada'} com sucesso!`);
+      
+      // Refresh data to ensure consistency
+      setTimeout(() => fetchAulas(), 500);
+    } catch (error: any) {
       console.error('Erro ao atualizar status da aula:', error);
-      toast.error('Erro ao atualizar status da aula');
+      
+      // Show specific error message if available
+      const errorMessage = error?.message || 'Erro desconhecido ao atualizar status da aula';
+      toast.error(`Falha ao ${novoStatus ? 'ativar' : 'inativar'} aula: ${errorMessage}`);
+      
+      // Revert optimistic update by refetching
+      fetchAulas();
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -229,8 +285,12 @@ const GerenciarAulasAtivas = ({ onEditarAula }: GerenciarAulasAtivasProps) => {
                           </span>
                           <Switch
                             checked={aula.ativa}
+                            disabled={loading}
                             onCheckedChange={(checked) => toggleAulaAtiva(aula.id, checked)}
                           />
+                          {loading && (
+                            <div className="w-4 h-4 animate-spin rounded-full border-2 border-gray-300 border-t-black"></div>
+                          )}
                         </div>
                       )}
 

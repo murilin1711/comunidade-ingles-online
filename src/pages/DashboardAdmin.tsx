@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
+import { supabase } from '@/integrations/supabase/client';
 import { LogOut, BarChart3, Users, Settings } from 'lucide-react';
 import EstatisticasAulas from '@/components/admin/EstatisticasAulas';
 import EstatisticasProfessores from '@/components/admin/EstatisticasProfessores';
@@ -11,6 +12,47 @@ import GerenciarAulasAdmin from '@/components/admin/GerenciarAulasAdmin';
 
 const DashboardAdmin = () => {
   const { user, userData, logout } = useAuth();
+  const [activeTab, setActiveTab] = useState('historico');
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  // Force refresh when tab changes
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
+    setRefreshKey(prev => prev + 1);
+  };
+
+  // Real-time updates to trigger refreshes
+  useEffect(() => {
+    const channel = supabase
+      .channel('admin-dashboard-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'aulas'
+        },
+        () => {
+          setRefreshKey(prev => prev + 1);
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'inscricoes'
+        },
+        () => {
+          setRefreshKey(prev => prev + 1);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   if (!userData || (userData.role as string) !== 'admin') {
     return (
@@ -53,7 +95,7 @@ const DashboardAdmin = () => {
         </div>
 
         {/* Main Content */}
-        <Tabs defaultValue="historico" className="space-y-6">
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
           <TabsList className="grid w-full grid-cols-4 bg-white/50 border border-black/20">
             <TabsTrigger value="historico" className="flex items-center gap-2">
               <BarChart3 className="w-4 h-4" />
@@ -74,19 +116,19 @@ const DashboardAdmin = () => {
           </TabsList>
 
           <TabsContent value="historico">
-            <EstatisticasAulas />
+            <EstatisticasAulas key={`historico-${refreshKey}`} />
           </TabsContent>
 
           <TabsContent value="professores">
-            <EstatisticasProfessores />
+            <EstatisticasProfessores key={`professores-${refreshKey}`} />
           </TabsContent>
 
           <TabsContent value="suspensoes">
-            <GerenciarSuspensoes />
+            <GerenciarSuspensoes key={`suspensoes-${refreshKey}`} />
           </TabsContent>
 
           <TabsContent value="aulas">
-            <GerenciarAulasAdmin />
+            <GerenciarAulasAdmin key={`aulas-${refreshKey}`} />
           </TabsContent>
         </Tabs>
       </div>

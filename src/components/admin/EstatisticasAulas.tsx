@@ -4,6 +4,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { supabase } from '@/integrations/supabase/client';
 import { useAdminStats } from '@/hooks/admin/useAdminStats';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -36,6 +37,39 @@ const EstatisticasAulas = () => {
 
   useEffect(() => {
     fetchHistoricoAulas(filtros);
+  }, [filtros, fetchHistoricoAulas]);
+
+  // Real-time updates for admin dashboard
+  useEffect(() => {
+    const channel = supabase
+      .channel('admin-stats-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'aulas'
+        },
+        () => {
+          fetchHistoricoAulas(filtros);
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'inscricoes'
+        },
+        () => {
+          fetchHistoricoAulas(filtros);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [filtros, fetchHistoricoAulas]);
 
 
