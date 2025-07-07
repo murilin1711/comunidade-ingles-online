@@ -8,6 +8,7 @@ import { Check, X } from 'lucide-react';
 interface Confirmado {
   id: string;
   aluno_id: string;
+  timestamp_inscricao: string;
   aluno?: {
     nome: string;
     matricula: string;
@@ -30,6 +31,20 @@ const ConfirmadosList = ({
   onMarcarPresenca, 
   onMarcarFalta 
 }: ConfirmadosListProps) => {
+  
+  const formatarTimestamp = (timestamp: string) => {
+    const data = new Date(timestamp);
+    const milissegundos = data.getMilliseconds().toString().padStart(3, '0');
+    return data.toLocaleString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    }) + `.${milissegundos}`;
+  };
+
   return (
     <Card className="border-black/20">
       <CardHeader>
@@ -58,6 +73,9 @@ const ConfirmadosList = ({
                   </p>
                   <p className="text-sm text-black/60">
                     Matrícula: {confirmado.aluno?.matricula || 'N/A'}
+                  </p>
+                  <p className="text-xs text-black/50">
+                    Inscrito em: {formatarTimestamp(confirmado.timestamp_inscricao)}
                   </p>
                 </div>
                 

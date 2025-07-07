@@ -8,6 +8,7 @@ interface AlunoEspera {
   id: string;
   aluno_id: string;
   posicao_espera: number;
+  timestamp_inscricao: string;
   aluno?: {
     nome: string;
     matricula: string;
@@ -19,6 +20,20 @@ interface ListaEsperaCardProps {
 }
 
 const ListaEsperaCard = ({ listaEspera }: ListaEsperaCardProps) => {
+  
+  const formatarTimestamp = (timestamp: string) => {
+    const data = new Date(timestamp);
+    const milissegundos = data.getMilliseconds().toString().padStart(3, '0');
+    return data.toLocaleString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    }) + `.${milissegundos}`;
+  };
+
   return (
     <Card className="border-black/20">
       <CardHeader>
@@ -54,6 +69,9 @@ const ListaEsperaCard = ({ listaEspera }: ListaEsperaCardProps) => {
                       </p>
                       <p className="text-sm text-black/60">
                         Matrícula: {aluno.aluno?.matricula || 'N/A'}
+                      </p>
+                      <p className="text-xs text-black/50">
+                        Inscrito em: {formatarTimestamp(aluno.timestamp_inscricao)}
                       </p>
                     </div>
                   </div>

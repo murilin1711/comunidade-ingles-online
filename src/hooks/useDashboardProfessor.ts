@@ -18,6 +18,7 @@ interface Aula {
 interface Confirmado {
   id: string;
   aluno_id: string;
+  timestamp_inscricao: string;
   aluno?: {
     nome: string;
     matricula: string;
@@ -29,6 +30,7 @@ interface AlunoEspera {
   id: string;
   aluno_id: string;
   posicao_espera: number;
+  timestamp_inscricao: string;
   aluno?: {
     nome: string;
     matricula: string;
@@ -90,11 +92,13 @@ export const useDashboardProfessor = () => {
           id,
           aluno_id,
           presenca,
+          timestamp_inscricao,
           aluno:alunos(nome, matricula)
         `)
         .eq('aula_id', aulaSelecionada)
         .eq('status', 'confirmado')
-        .is('cancelamento', null);
+        .is('cancelamento', null)
+        .order('timestamp_inscricao', { ascending: true });
 
       if (confirmadosError) throw confirmadosError;
 
@@ -105,18 +109,24 @@ export const useDashboardProfessor = () => {
           id,
           aluno_id,
           posicao_espera,
+          timestamp_inscricao,
           aluno:alunos(nome, matricula)
         `)
         .eq('aula_id', aulaSelecionada)
         .eq('status', 'espera')
         .is('cancelamento', null)
-        .order('data_inscricao', { ascending: true });
+        .order('timestamp_inscricao', { ascending: true });
 
       if (esperaError) throw esperaError;
 
       // Filtrar apenas inscrições com dados do aluno válidos
       const confirmadosValidos = (confirmadosData || []).filter(item => item.aluno);
       const esperaValidos = (esperaData || []).filter(item => item.aluno);
+
+      console.log('Dados confirmados recebidos:', confirmadosData);
+      console.log('Dados espera recebidos:', esperaData);
+      console.log('Confirmados válidos:', confirmadosValidos);
+      console.log('Espera válidos:', esperaValidos);
 
       setConfirmados(confirmadosValidos);
       setListaEspera(esperaValidos);
