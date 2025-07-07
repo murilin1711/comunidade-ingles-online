@@ -95,6 +95,7 @@ export type Database = {
           atualizado_em: string
           capacidade: number
           criado_em: string
+          data_aula: string | null
           dia_semana: number
           horario: string
           id: string
@@ -108,6 +109,7 @@ export type Database = {
           atualizado_em?: string
           capacidade?: number
           criado_em?: string
+          data_aula?: string | null
           dia_semana: number
           horario: string
           id?: string
@@ -121,6 +123,7 @@ export type Database = {
           atualizado_em?: string
           capacidade?: number
           criado_em?: string
+          data_aula?: string | null
           dia_semana?: number
           horario?: string
           id?: string

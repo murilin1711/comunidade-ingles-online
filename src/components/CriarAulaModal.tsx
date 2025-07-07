@@ -5,10 +5,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 import { toast } from '@/components/ui/sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { Plus } from 'lucide-react';
+import { Plus, CalendarIcon } from 'lucide-react';
+import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 interface CriarAulaModalProps {
   professorId: string;
@@ -19,6 +23,7 @@ const CriarAulaModal = ({ professorId, onAulaCriada }: CriarAulaModalProps) => {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const { userData } = useAuth();
+  const [selectedDate, setSelectedDate] = useState<Date>();
   const [formData, setFormData] = useState({
     dia_semana: '',
     horario: '',
@@ -52,8 +57,8 @@ const CriarAulaModal = ({ professorId, onAulaCriada }: CriarAulaModalProps) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.dia_semana || !formData.horario || !formData.link_meet || !formData.professor_nome || !formData.nivel) {
-      toast.error('Preencha todos os campos obrigatórios');
+    if (!formData.dia_semana || !formData.horario || !formData.link_meet || !formData.professor_nome || !formData.nivel || !selectedDate) {
+      toast.error('Preencha todos os campos obrigatórios, incluindo a data da aula');
       return;
     }
 
@@ -68,6 +73,7 @@ const CriarAulaModal = ({ professorId, onAulaCriada }: CriarAulaModalProps) => {
           link_meet: formData.link_meet,
           professor_nome: formData.professor_nome,
           nivel: formData.nivel,
+          data_aula: selectedDate.toISOString().split('T')[0], // Formato YYYY-MM-DD
           capacidade: 6,
           ativa: true
         });
@@ -75,9 +81,11 @@ const CriarAulaModal = ({ professorId, onAulaCriada }: CriarAulaModalProps) => {
       if (error) throw error;
 
       const diaSelecionado = diasSemana.find(d => d.value === formData.dia_semana)?.label;
-      toast.success(`Aula criada com sucesso para ${diaSelecionado} às ${formData.horario} - Nível ${formData.nivel}`);
+      const dataFormatada = format(selectedDate, 'dd/MM/yyyy');
+      toast.success(`Aula criada com sucesso para ${diaSelecionado}, ${dataFormatada} às ${formData.horario} - Nível ${formData.nivel}`);
       
       setFormData({ dia_semana: '', horario: '', link_meet: '', professor_nome: userData?.nome || '', nivel: '' });
+      setSelectedDate(undefined);
       setOpen(false);
       onAulaCriada();
     } catch (error) {
@@ -130,6 +138,34 @@ const CriarAulaModal = ({ professorId, onAulaCriada }: CriarAulaModalProps) => {
                 ))}
               </SelectContent>
             </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="data_aula" className="text-black">Data da Aula</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    "w-full justify-start text-left font-normal border-black/20 focus:border-yellow-500 focus:ring-yellow-500",
+                    !selectedDate && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {selectedDate ? format(selectedDate, "dd/MM/yyyy") : <span>Selecione a data</span>}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={selectedDate}
+                  onSelect={setSelectedDate}
+                  disabled={(date) => date < new Date()}
+                  initialFocus
+                  className={cn("p-3 pointer-events-auto")}
+                />
+              </PopoverContent>
+            </Popover>
           </div>
 
           <div className="space-y-2">
