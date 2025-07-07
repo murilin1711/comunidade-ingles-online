@@ -73,7 +73,7 @@ const EstatisticasProfessores = () => {
                   <SelectValue placeholder="Todos os níveis" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todos os níveis</SelectItem>
+                  <SelectItem value="todos">Todos os níveis</SelectItem>
                   <SelectItem value="Upper">Upper</SelectItem>
                   <SelectItem value="Lower">Lower</SelectItem>
                 </SelectContent>

@@ -78,7 +78,7 @@ const EstatisticasAulas = () => {
                   <SelectValue placeholder="Todos os professores" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todos os professores</SelectItem>
+                  <SelectItem value="todos">Todos os professores</SelectItem>
                   {/* Será preenchido dinamicamente */}
                 </SelectContent>
               </Select>
@@ -95,7 +95,7 @@ const EstatisticasAulas = () => {
                   <SelectValue placeholder="Todos os níveis" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todos os níveis</SelectItem>
+                  <SelectItem value="todos">Todos os níveis</SelectItem>
                   <SelectItem value="Upper">Upper</SelectItem>
                   <SelectItem value="Lower">Lower</SelectItem>
                 </SelectContent>
