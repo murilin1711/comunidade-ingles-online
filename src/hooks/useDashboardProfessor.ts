@@ -18,10 +18,10 @@ interface Aula {
 interface Confirmado {
   id: string;
   aluno_id: string;
-  aluno: {
+  aluno?: {
     nome: string;
     matricula: string;
-  };
+  } | null;
   presenca: boolean | null;
 }
 
@@ -29,10 +29,10 @@ interface AlunoEspera {
   id: string;
   aluno_id: string;
   posicao_espera: number;
-  aluno: {
+  aluno?: {
     nome: string;
     matricula: string;
-  };
+  } | null;
 }
 
 export const useDashboardProfessor = () => {
@@ -90,7 +90,7 @@ export const useDashboardProfessor = () => {
           id,
           aluno_id,
           presenca,
-          aluno:alunos!inscricoes_aluno_id_fkey(nome, matricula)
+          aluno:alunos(nome, matricula)
         `)
         .eq('aula_id', aulaSelecionada)
         .eq('status', 'confirmado')
@@ -105,7 +105,7 @@ export const useDashboardProfessor = () => {
           id,
           aluno_id,
           posicao_espera,
-          aluno:alunos!inscricoes_aluno_id_fkey(nome, matricula)
+          aluno:alunos(nome, matricula)
         `)
         .eq('aula_id', aulaSelecionada)
         .eq('status', 'espera')
@@ -114,8 +114,12 @@ export const useDashboardProfessor = () => {
 
       if (esperaError) throw esperaError;
 
-      setConfirmados(confirmadosData || []);
-      setListaEspera(esperaData || []);
+      // Filtrar apenas inscrições com dados do aluno válidos
+      const confirmadosValidos = (confirmadosData || []).filter(item => item.aluno);
+      const esperaValidos = (esperaData || []).filter(item => item.aluno);
+
+      setConfirmados(confirmadosValidos);
+      setListaEspera(esperaValidos);
     } catch (error) {
       console.error('Erro ao buscar inscrições:', error);
       toast.error('Erro ao carregar inscrições');

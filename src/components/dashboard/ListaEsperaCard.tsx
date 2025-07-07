@@ -8,10 +8,10 @@ interface AlunoEspera {
   id: string;
   aluno_id: string;
   posicao_espera: number;
-  aluno: {
+  aluno?: {
     nome: string;
     matricula: string;
-  };
+  } | null;
 }
 
 interface ListaEsperaCardProps {
@@ -50,10 +50,10 @@ const ListaEsperaCard = ({ listaEspera }: ListaEsperaCardProps) => {
                     </Badge>
                     <div>
                       <p className="font-medium text-black">
-                        {aluno.aluno.nome}
+                        {aluno.aluno?.nome || 'Nome não disponível'}
                       </p>
                       <p className="text-sm text-black/60">
-                        Matrícula: {aluno.aluno.matricula}
+                        Matrícula: {aluno.aluno?.matricula || 'N/A'}
                       </p>
                     </div>
                   </div>

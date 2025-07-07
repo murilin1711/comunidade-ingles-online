@@ -8,10 +8,10 @@ import { Check, X } from 'lucide-react';
 interface Confirmado {
   id: string;
   aluno_id: string;
-  aluno: {
+  aluno?: {
     nome: string;
     matricula: string;
-  };
+  } | null;
   presenca: boolean | null;
 }
 
@@ -54,10 +54,10 @@ const ConfirmadosList = ({
               >
                 <div className="flex-1">
                   <p className="font-medium text-black">
-                    {confirmado.aluno.nome}
+                    {confirmado.aluno?.nome || 'Nome não disponível'}
                   </p>
                   <p className="text-sm text-black/60">
-                    Matrícula: {confirmado.aluno.matricula}
+                    Matrícula: {confirmado.aluno?.matricula || 'N/A'}
                   </p>
                 </div>
                 
