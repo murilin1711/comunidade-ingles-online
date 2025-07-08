@@ -9,6 +9,9 @@ import Logo from '@/components/Logo';
 import AvisarFaltaModal from '@/components/AvisarFaltaModal';
 import EstatisticasPresencaAluno from '@/components/EstatisticasPresencaAluno';
 import InscricoesDetalhes from '@/components/InscricoesDetalhes';
+import SecurityWrapper from '@/components/SecurityWrapper';
+import { useSecurity } from '@/hooks/useSecurity';
+import { useErrorHandler } from '@/hooks/useErrorHandler';
 
 interface Aula {
   id: string;
@@ -32,6 +35,8 @@ const DashboardAluno = () => {
   const [loading, setLoading] = useState(false);
   const [configuracoes, setConfiguracoes] = useState<any>(null);
   const { user, userData, logout } = useAuth();
+  const { canPerformCriticalAction } = useSecurity();
+  const { handleError, handleSuccess } = useErrorHandler();
 
   const diasSemana = [
     'Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'
@@ -208,8 +213,13 @@ const DashboardAluno = () => {
   const handleInscricao = async (aulaId: string) => {
     if (!user || !userData) return;
 
+    // Verificação de segurança obrigatória
+    if (!canPerformCriticalAction()) {
+      return;
+    }
+
     if (isAlunoSuspenso()) {
-      toast.error('Você está suspenso e não pode se inscrever em aulas');
+      handleError(new Error('student_suspended'), 'Tentativa de inscrição estando suspenso');
       return;
     }
 
@@ -261,7 +271,7 @@ const DashboardAluno = () => {
 
       if (error) throw error;
 
-      toast.success(
+      handleSuccess(
         status === 'confirmado' 
           ? 'Inscrição confirmada!' 
           : 'Você foi adicionado à lista de espera!'
@@ -283,8 +293,6 @@ const DashboardAluno = () => {
       );
 
     } catch (error: any) {
-      console.error('Erro na inscrição:', error);
-      
       // Reverter UI em caso de erro
       setAulas(prevAulas => 
         prevAulas.map(a => 
@@ -298,13 +306,7 @@ const DashboardAluno = () => {
         )
       );
       
-      if (error.code === '23505') { // Unique constraint violation
-        toast.error('Você já está inscrito nesta aula');
-      } else if (error.message?.includes('já possui inscrição em aula nesta semana')) {
-        toast.error('Você já possui uma inscrição nesta semana. Apenas uma inscrição por semana é permitida.');
-      } else {
-        toast.error('Erro ao fazer inscrição. Tente novamente.');
-      }
+      handleError(error, 'Erro ao fazer inscrição');
     } finally {
       setLoading(false);
     }
@@ -312,6 +314,11 @@ const DashboardAluno = () => {
 
   const handleCancelarInscricao = async (aulaId: string) => {
     if (!user || !userData) return;
+
+    // Verificação de segurança obrigatória
+    if (!canPerformCriticalAction()) {
+      return;
+    }
 
     setLoading(true);
     try {
@@ -360,16 +367,15 @@ const DashboardAluno = () => {
         }
       }
 
-      toast.success(
+      handleSuccess(
         diferencaHoras < 4 
           ? 'Inscrição cancelada. Você foi suspenso por 1 semana por cancelar com menos de 4h de antecedência.' 
           : 'Inscrição cancelada com sucesso!'
       );
 
       await fetchAulas();
-    } catch (error) {
-      console.error('Erro ao cancelar inscrição:', error);
-      toast.error('Erro ao cancelar inscrição. Tente novamente.');
+    } catch (error: any) {
+      handleError(error, 'Erro ao cancelar inscrição');
     } finally {
       setLoading(false);
     }
@@ -416,8 +422,9 @@ const DashboardAluno = () => {
   const inscricaoAberta = isInscricaoAberta();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-yellow-50 to-yellow-100 p-4">
-      <div className="max-w-4xl mx-auto">
+    <SecurityWrapper requireSecureTime={true} requireNoDevTools={false}>
+      <div className="min-h-screen bg-gradient-to-br from-yellow-50 to-yellow-100 p-4">
+        <div className="max-w-4xl mx-auto">
         <div className="flex justify-between items-center mb-6">
           <div className="flex items-center gap-4">
             <Logo size="md" />
@@ -602,8 +609,9 @@ const DashboardAluno = () => {
         <div className="mb-6">
           <EstatisticasPresencaAluno alunoId={user?.id || ''} />
         </div>
+        </div>
       </div>
-    </div>
+    </SecurityWrapper>
   );
 };
 

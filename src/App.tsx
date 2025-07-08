@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import LoadingScreen from "@/components/LoadingScreen";
+import SecurityGuard from "@/components/SecurityGuard";
 import Login from "./pages/Login";
 import Cadastro from "./pages/Cadastro";
 import CadastroFuncionario from "./pages/CadastroFuncionario";
@@ -112,11 +113,13 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
       <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <AppContent />
-        </BrowserRouter>
+        <SecurityGuard>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <AppContent />
+          </BrowserRouter>
+        </SecurityGuard>
       </TooltipProvider>
     </AuthProvider>
   </QueryClientProvider>
