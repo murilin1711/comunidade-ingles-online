@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Search, Download, Users, Clock, Check, X, Trash2 } from 'lucide-react';
+import { Search, Download, Users, Clock, Check, X, Trash2, CheckCircle, Calendar } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -52,6 +52,9 @@ interface HistoricoAula {
   presentes?: Aluno[];
   faltas?: Aluno[];
   listaEspera?: Aluno[];
+  status_alterado_por?: string;
+  status_alterado_em?: string;
+  status_alterado_por_tipo?: string;
 }
 
 interface HistoricoAulaModalProps {
@@ -135,6 +138,46 @@ const HistoricoAulaModal = ({ aula, open, onOpenChange, onAulaApagada }: Histori
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  const marcarComoRealizada = async () => {
+    try {
+      setLoading(true);
+
+      // Verificar se a aula já foi realizada
+      const aulaRealizada = aula.data_aula && new Date(aula.data_aula) < new Date();
+      const novoStatus = aulaRealizada ? null : new Date().toISOString().split('T')[0];
+      
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Usuário não autenticado');
+
+      // Verificar se o usuário é admin
+      const { data: adminData } = await supabase
+        .from('administradores')
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
+
+      const { error } = await supabase
+        .from('aulas')
+        .update({
+          data_aula: novoStatus,
+          status_alterado_por: user.id,
+          status_alterado_em: new Date().toISOString(),
+          status_alterado_por_tipo: adminData ? 'admin' : 'professor'
+        })
+        .eq('id', aula.id);
+
+      if (error) throw error;
+
+      toast.success(aulaRealizada ? 'Aula marcada como agendada!' : 'Aula marcada como realizada!');
+      if (onAulaApagada) onAulaApagada(); // Trigger refresh
+    } catch (error: any) {
+      console.error('Erro ao alterar status da aula:', error);
+      toast.error(`Erro ao alterar status: ${error.message}`);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const apagarAulaPermanentemente = async () => {
@@ -222,6 +265,24 @@ const HistoricoAulaModal = ({ aula, open, onOpenChange, onAulaApagada }: Histori
             >
               <Download className="w-4 h-4 mr-2" />
               Exportar CSV
+            </Button>
+
+            <Button
+              onClick={marcarComoRealizada}
+              disabled={loading}
+              className="bg-blue-500 hover:bg-blue-600 text-white"
+            >
+              {aula.data_aula && new Date(aula.data_aula) < new Date() ? (
+                <>
+                  <Calendar className="w-4 h-4 mr-2" />
+                  Marcar como Agendada
+                </>
+              ) : (
+                <>
+                  <CheckCircle className="w-4 h-4 mr-2" />
+                  Marcar como Realizada
+                </>
+              )}
             </Button>
             
             <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>

@@ -104,6 +104,9 @@ export type Database = {
           nivel: string
           professor_id: string
           professor_nome: string | null
+          status_alterado_em: string | null
+          status_alterado_por: string | null
+          status_alterado_por_tipo: string | null
         }
         Insert: {
           ativa?: boolean
@@ -119,6 +122,9 @@ export type Database = {
           nivel: string
           professor_id: string
           professor_nome?: string | null
+          status_alterado_em?: string | null
+          status_alterado_por?: string | null
+          status_alterado_por_tipo?: string | null
         }
         Update: {
           ativa?: boolean
@@ -134,6 +140,9 @@ export type Database = {
           nivel?: string
           professor_id?: string
           professor_nome?: string | null
+          status_alterado_em?: string | null
+          status_alterado_por?: string | null
+          status_alterado_por_tipo?: string | null
         }
         Relationships: [
           {
