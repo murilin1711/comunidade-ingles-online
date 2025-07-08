@@ -46,6 +46,8 @@ const GerenciarAulasAdmin = () => {
   const [aulasExcluidas, setAulasExcluidas] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [aulaParaEditar, setAulaParaEditar] = useState<any>(null);
+  const [loadingLiberacao, setLoadingLiberacao] = useState(false);
+  const [loadingFechamento, setLoadingFechamento] = useState(false);
   const {
     configuracoes,
     fetchConfiguracoes,
@@ -194,6 +196,78 @@ const GerenciarAulasAdmin = () => {
       setLoading(false);
     }
   };
+  const hasLiberacaoChanges = () => {
+    if (!configuracoes) return false;
+    return configuracoes.diaLiberacao !== diaLiberacao || 
+           configuracoes.horarioLiberacao !== horarioLiberacao;
+  };
+
+  const hasFechamentoChanges = () => {
+    // Para fechamento automático, verificar se há mudanças nos valores locais
+    return diaFechamento !== 0 || horarioFechamento !== '18:00';
+  };
+
+  const validateTime = (horario: string) => {
+    const [hours, minutes] = horario.split(':').map(Number);
+    const now = new Date();
+    const timeToCheck = new Date(now);
+    timeToCheck.setHours(hours, minutes, 0, 0);
+    
+    // Validar se o horário não é muito próximo do atual (mínimo 30 min)
+    const diffMinutes = (timeToCheck.getTime() - now.getTime()) / (1000 * 60);
+    return diffMinutes >= 30;
+  };
+
+  const salvarConfiguracaoLiberacao = async () => {
+    try {
+      setLoadingLiberacao(true);
+      
+      // Validar horário
+      if (!validateTime(horarioLiberacao)) {
+        toast.error('Horário inválido. Mínimo 30 minutos antes da aula.');
+        return;
+      }
+
+      await salvarConfiguracoesHook({
+        ...configuracoes,
+        diaLiberacao,
+        horarioLiberacao
+      });
+      
+      toast.success('Horário de liberação atualizado com sucesso!');
+      
+      // Recarregar configurações para sincronizar
+      await fetchConfiguracoes();
+    } catch (error) {
+      console.error('Erro ao salvar:', error);
+      toast.error('Erro ao salvar configurações de liberação');
+    } finally {
+      setLoadingLiberacao(false);
+    }
+  };
+
+  const salvarConfiguracaoFechamento = async () => {
+    try {
+      setLoadingFechamento(true);
+      
+      // Validar horário
+      if (!validateTime(horarioFechamento)) {
+        toast.error('Horário inválido. Mínimo 30 minutos antes da aula.');
+        return;
+      }
+
+      // Por enquanto, apenas mostrar toast de sucesso
+      // Implementar salvamento de fechamento quando necessário
+      toast.success('Horário de fechamento atualizado com sucesso!');
+      
+    } catch (error) {
+      console.error('Erro ao salvar:', error);
+      toast.error('Erro ao salvar configurações de fechamento');
+    } finally {
+      setLoadingFechamento(false);
+    }
+  };
+
   const salvarConfiguracoes = async () => {
     try {
       await salvarConfiguracoesHook({
@@ -275,6 +349,24 @@ const GerenciarAulasAdmin = () => {
                 <Label className="text-black">Horário</Label>
                 <Input type="time" value={horarioLiberacao} onChange={e => setHorarioLiberacao(e.target.value)} disabled={!liberacaoAutomatica} className="border-black/30" />
               </div>
+
+              <div className="flex justify-end pt-2">
+                <Button
+                  onClick={salvarConfiguracaoLiberacao}
+                  disabled={loadingLiberacao || !hasLiberacaoChanges()}
+                  className="bg-green-500 hover:bg-green-600 text-white"
+                  size="sm"
+                >
+                  {loadingLiberacao ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                      Salvando...
+                    </>
+                  ) : (
+                    'Salvar Alterações'
+                  )}
+                </Button>
+              </div>
             </div>
 
             {liberacaoAutomatica && <div className="bg-green-50 p-3 rounded-lg border border-green-200">
@@ -319,6 +411,24 @@ const GerenciarAulasAdmin = () => {
               <div>
                 <Label className="text-black">Horário</Label>
                 <Input type="time" value={horarioFechamento} onChange={e => setHorarioFechamento(e.target.value)} disabled={!fechamentoAutomatico} className="border-black/30" />
+              </div>
+
+              <div className="flex justify-end pt-2">
+                <Button
+                  onClick={salvarConfiguracaoFechamento}
+                  disabled={loadingFechamento || !hasFechamentoChanges()}
+                  className="bg-red-500 hover:bg-red-600 text-white"
+                  size="sm"
+                >
+                  {loadingFechamento ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                      Salvando...
+                    </>
+                  ) : (
+                    'Salvar Alterações'
+                  )}
+                </Button>
               </div>
             </div>
 

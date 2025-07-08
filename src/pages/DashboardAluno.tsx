@@ -29,6 +29,7 @@ interface Aula {
 const DashboardAluno = () => {
   const [aulas, setAulas] = useState<Aula[]>([]);
   const [loading, setLoading] = useState(false);
+  const [configuracoes, setConfiguracoes] = useState<any>(null);
   const { user, userData, logout } = useAuth();
 
   const diasSemana = [
@@ -38,8 +39,25 @@ const DashboardAluno = () => {
   useEffect(() => {
     if (user && userData?.role === 'aluno') {
       fetchAulas();
+      fetchConfiguracoes();
     }
   }, [user, userData]);
+
+  const fetchConfiguracoes = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('configuracoes_sistema')
+        .select('*')
+        .order('atualizado_em', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (error) throw error;
+      setConfiguracoes(data);
+    } catch (error) {
+      console.error('Erro ao buscar configurações:', error);
+    }
+  };
 
   // Real-time updates para sincronização automática
   useEffect(() => {
@@ -59,19 +77,31 @@ const DashboardAluno = () => {
           fetchAulas();
         }
       )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'aulas'
-        },
-        () => {
-          console.log('Aulas changed, updating dashboard...');
-          fetchAulas();
-        }
-      )
-      .subscribe();
+       .on(
+         'postgres_changes',
+         {
+           event: '*',
+           schema: 'public',
+           table: 'aulas'
+         },
+         () => {
+           console.log('Aulas changed, updating dashboard...');
+           fetchAulas();
+         }
+       )
+       .on(
+         'postgres_changes',
+         {
+           event: '*',
+           schema: 'public',
+           table: 'configuracoes_sistema'
+         },
+         () => {
+           console.log('Configurações changed, updating dashboard...');
+           fetchConfiguracoes();
+         }
+       )
+       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
@@ -141,13 +171,29 @@ const DashboardAluno = () => {
   };
 
   const isInscricaoAberta = () => {
+    if (!configuracoes) {
+      // Fallback para valores padrão
+      const agora = new Date();
+      const diaSemana = agora.getDay();
+      const hora = agora.getHours();
+      const minutos = agora.getMinutes();
+      return diaSemana === 1 && (hora > 12 || (hora === 12 && minutos >= 30));
+    }
+
     const agora = new Date();
-    const diaSemana = agora.getDay(); // 0 = domingo, 1 = segunda, etc.
+    const diaSemana = agora.getDay();
     const hora = agora.getHours();
     const minutos = agora.getMinutes();
     
-    // Verificar se é segunda-feira (dia 1) às 12:30 ou depois
-    return diaSemana === 1 && (hora > 12 || (hora === 12 && minutos >= 30));
+    // Usar configurações dinâmicas
+    const [horaConfig, minutoConfig] = configuracoes.horario_liberacao.split(':').map(Number);
+    const diaConfig = configuracoes.dia_liberacao;
+    
+    return diaSemana === diaConfig && (hora > horaConfig || (hora === horaConfig && minutos >= minutoConfig));
+  };
+
+  const getDiaSemanaTexto = (dia: number) => {
+    return diasSemana[dia] || 'segunda-feira';
   };
 
   const handleInscricao = async (aulaId: string) => {
@@ -384,7 +430,10 @@ const DashboardAluno = () => {
         <Card className="mb-6 border-blue-500 bg-blue-50">
           <CardContent className="pt-6">
             <div className="text-blue-800">
-              <strong>Período de inscrições:</strong> As inscrições abrem toda segunda-feira às 12:30.
+              <strong>Período de inscrições:</strong>{' '}
+              {configuracoes?.mensagem_periodo_inscricao || 
+                `As inscrições abrem toda ${getDiaSemanaTexto(configuracoes?.dia_liberacao || 1)} às ${configuracoes?.horario_liberacao || '12:30'}.`
+              }
               <p className="text-sm mt-1">
                 Você poderá se inscrever nas aulas disponíveis apenas durante este horário.
               </p>
@@ -402,7 +451,7 @@ const DashboardAluno = () => {
               <div className="text-orange-800">
                 <strong>Inscrições fechadas:</strong> As inscrições estão fechadas no momento.
                 <p className="text-sm mt-1">
-                  Aguarde até segunda-feira às 12:30 para se inscrever nas aulas.
+                  Aguarde até {getDiaSemanaTexto(configuracoes?.dia_liberacao || 1)} às {configuracoes?.horario_liberacao || '12:30'} para se inscrever nas aulas.
                 </p>
               </div>
             </CardContent>
