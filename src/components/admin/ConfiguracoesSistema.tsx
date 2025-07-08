@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { toast } from '@/components/ui/sonner';
 import { useConfiguracoesAdmin } from '@/hooks/useConfiguracoesAdmin';
-import { Settings, Clock, AlertTriangle, Calendar, Save } from 'lucide-react';
+import { Save } from 'lucide-react';
+import SuspensionRulesCard from './config/SuspensionRulesCard';
+import ClassReleaseCard from './config/ClassReleaseCard';
+import DashboardMessagesCard from './config/DashboardMessagesCard';
 
 const ConfiguracoesSistema = () => {
   const {
@@ -69,15 +68,6 @@ const ConfiguracoesSistema = () => {
     }
   };
 
-  const diasSemana = [
-    { value: 0, label: 'Domingo' },
-    { value: 1, label: 'Segunda-feira' },
-    { value: 2, label: 'Terça-feira' },
-    { value: 3, label: 'Quarta-feira' },
-    { value: 4, label: 'Quinta-feira' },
-    { value: 5, label: 'Sexta-feira' },
-    { value: 6, label: 'Sábado' }
-  ];
 
   if (loading) {
     return (
@@ -89,180 +79,25 @@ const ConfiguracoesSistema = () => {
 
   return (
     <div className="space-y-6">
-      {/* Regras de Suspensão */}
-      <Card className="border-black/20">
-        <CardHeader>
-          <CardTitle className="text-black flex items-center gap-2">
-            <AlertTriangle className="w-5 h-5" />
-            Regras de Suspensão
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <Label htmlFor="faltaComAvisoMais4h" className="text-black">
-                Falta com aviso ≥ {formData.horasMinimaBaixaCansulamento}h antes
-              </Label>
-              <div className="flex items-center gap-2">
-                <Input
-                  id="faltaComAvisoMais4h"
-                  type="number"
-                  min="1"
-                  max="12"
-                  value={formData.faltaComAvisoMais4h}
-                  onChange={(e) => handleInputChange('faltaComAvisoMais4h', parseInt(e.target.value))}
-                  className="border-black/30"
-                />
-                <span className="text-black">semana(s)</span>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="faltaComAvisoMenos4h" className="text-black">
-                Falta com aviso &lt; {formData.horasMinimaBaixaCansulamento}h antes
-              </Label>
-              <div className="flex items-center gap-2">
-                <Input
-                  id="faltaComAvisoMenos4h"
-                  type="number"
-                  min="1"
-                  max="12"
-                  value={formData.faltaComAvisoMenos4h}
-                  onChange={(e) => handleInputChange('faltaComAvisoMenos4h', parseInt(e.target.value))}
-                  className="border-black/30"
-                />
-                <span className="text-black">semana(s)</span>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="faltaSemAviso" className="text-black">
-                Falta sem aviso
-              </Label>
-              <div className="flex items-center gap-2">
-                <Input
-                  id="faltaSemAviso"
-                  type="number"
-                  min="1"
-                  max="12"
-                  value={formData.faltaSemAviso}
-                  onChange={(e) => handleInputChange('faltaSemAviso', parseInt(e.target.value))}
-                  className="border-black/30"
-                />
-                <span className="text-black">semana(s)</span>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="horasMinimaBaixaCansulamento" className="text-black">
-                Horas mínimas para cancelamento sem punição
-              </Label>
-              <div className="flex items-center gap-2">
-                <Input
-                  id="horasMinimaBaixaCansulamento"
-                  type="number"
-                  min="1"
-                  max="48"
-                  value={formData.horasMinimaBaixaCansulamento}
-                  onChange={(e) => handleInputChange('horasMinimaBaixaCansulamento', parseInt(e.target.value))}
-                  className="border-black/30"
-                />
-                <span className="text-black">hora(s)</span>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <SuspensionRulesCard 
+        formData={formData} 
+        onInputChange={handleInputChange} 
+      />
 
       <Separator />
 
-      {/* Configurações de Liberação das Aulas */}
-      <Card className="border-black/20">
-        <CardHeader>
-          <CardTitle className="text-black flex items-center gap-2">
-            <Calendar className="w-5 h-5" />
-            Liberação das Aulas
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <Label htmlFor="diaLiberacao" className="text-black">
-                Dia da semana para liberação
-              </Label>
-              <Select
-                value={formData.diaLiberacao.toString()}
-                onValueChange={(value) => handleInputChange('diaLiberacao', parseInt(value))}
-              >
-                <SelectTrigger className="border-black/30">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {diasSemana.map((dia) => (
-                    <SelectItem key={dia.value} value={dia.value.toString()}>
-                      {dia.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="horarioLiberacao" className="text-black">
-                Horário de liberação
-              </Label>
-              <Input
-                id="horarioLiberacao"
-                type="time"
-                value={formData.horarioLiberacao}
-                onChange={(e) => handleInputChange('horarioLiberacao', e.target.value)}
-                className="border-black/30"
-              />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <ClassReleaseCard 
+        formData={formData} 
+        onInputChange={handleInputChange} 
+      />
 
       <Separator />
 
-      {/* Mensagens para Dashboard do Aluno */}
-      <Card className="border-black/20">
-        <CardHeader>
-          <CardTitle className="text-black flex items-center gap-2">
-            <Settings className="w-5 h-5" />
-            Mensagens do Dashboard do Aluno
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="space-y-2">
-            <Label htmlFor="mensagemPeriodoInscricao" className="text-black">
-              Mensagem sobre período de inscrições
-            </Label>
-            <Input
-              id="mensagemPeriodoInscricao"
-              value={formData.mensagemPeriodoInscricao}
-              onChange={(e) => handleInputChange('mensagemPeriodoInscricao', e.target.value)}
-              className="border-black/30"
-              placeholder="Mensagem sobre quando as inscrições abrem"
-            />
-          </div>
+      <DashboardMessagesCard 
+        formData={formData} 
+        onInputChange={handleInputChange} 
+      />
 
-          <div className="space-y-2">
-            <Label htmlFor="mensagemRegrasSuspensao" className="text-black">
-              Mensagem sobre regras de suspensão
-            </Label>
-            <Input
-              id="mensagemRegrasSuspensao"
-              value={formData.mensagemRegrasSuspensao}
-              onChange={(e) => handleInputChange('mensagemRegrasSuspensao', e.target.value)}
-              className="border-black/30"
-              placeholder="Mensagem sobre as regras de suspensão"
-            />
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Botão Salvar */}
       <div className="flex justify-end">
         <Button
           onClick={handleSalvar}
