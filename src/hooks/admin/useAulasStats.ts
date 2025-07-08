@@ -79,15 +79,25 @@ export const useAulasStats = () => {
 
       setHistoricoAulas(aulasProcessadas);
 
+      // Buscar dados de avisos de falta para calcular estatísticas mais precisas
+      const { data: avisosFaltaData } = await supabase
+        .from('avisos_falta')
+        .select('id, aluno_id, aula_id, status')
+        .in('aula_id', aulasProcessadas.map(aula => aula.id));
+
       // Calcular estatísticas de presença
       const totalConfirmados = aulasProcessadas.reduce((acc, aula) => acc + (aula.confirmados?.length || 0), 0);
       const totalPresentes = aulasProcessadas.reduce((acc, aula) => acc + (aula.presentes?.length || 0), 0);
       const totalFaltas = aulasProcessadas.reduce((acc, aula) => acc + (aula.faltas?.length || 0), 0);
+      
+      // Contar avisos de falta reais
+      const faltasComAvisoCount = avisosFaltaData?.length || 0;
+      const faltasSemAvisoCount = Math.max(0, totalFaltas - faltasComAvisoCount);
 
       setEstatisticasPresenca({
         taxaPresenca: totalConfirmados > 0 ? Math.round((totalPresentes / totalConfirmados) * 100) : 0,
-        faltasSemAviso: Math.round(totalFaltas * 0.7), // Simulação - seria calculado com base em dados reais
-        faltasComAviso: Math.round(totalFaltas * 0.3)
+        faltasSemAviso: faltasSemAvisoCount,
+        faltasComAviso: faltasComAvisoCount
       });
 
     } catch (error) {

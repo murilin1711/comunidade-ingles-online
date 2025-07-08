@@ -53,6 +53,30 @@ const DashboardAdmin = () => {
           setRefreshKey(prev => prev + 1);
         }
       )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'avisos_falta'
+        },
+        () => {
+          console.log('Admin: Avisos falta changed, triggering refresh...');
+          setRefreshKey(prev => prev + 1);
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'suspensoes'
+        },
+        () => {
+          console.log('Admin: Suspensoes changed, triggering refresh...');
+          setRefreshKey(prev => prev + 1);
+        }
+      )
       .subscribe();
 
     return () => {
