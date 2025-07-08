@@ -10,6 +10,7 @@ import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/sonner';
 import { Calendar, Clock, Plus, Lock, Settings, CalendarPlus, LockKeyhole, RefreshCw, BookOpen, Activity } from 'lucide-react';
@@ -23,6 +24,8 @@ interface AulaParaLiberar {
   nivel: string;
   professor_nome: string;
   capacidade: number;
+  data_aula: string | null;
+  ativa: boolean;
 }
 interface AulaParaFechar {
   id: string;
@@ -99,7 +102,9 @@ const GerenciarAulasAdmin = () => {
           horario,
           nivel,
           professor_nome,
-          capacidade
+          capacidade,
+          data_aula,
+          ativa
         `).eq('ativa', true).is('data_aula', null) // Aulas que ainda não foram liberadas
       .order('dia_semana').order('horario');
       if (error) throw error;
@@ -210,24 +215,19 @@ const GerenciarAulasAdmin = () => {
     return diaFechamento !== 0 || horarioFechamento !== '18:00';
   };
 
-  const validateTime = (horario: string, diaLiberacao: number) => {
+  const validateTime = (horario: string) => {
     const [hours, minutes] = horario.split(':').map(Number);
     const now = new Date();
+    const newTime = new Date(now);
+    newTime.setHours(hours, minutes, 0, 0);
     
-    // Calcular próxima ocorrência do dia da semana da liberação
-    const proximaLiberacao = new Date(now);
-    const diasParaLiberacao = (diaLiberacao + 7 - now.getDay()) % 7;
-    proximaLiberacao.setDate(now.getDate() + diasParaLiberacao);
-    proximaLiberacao.setHours(hours, minutes, 0, 0);
-    
-    // Se é o mesmo dia, verificar se já passou o horário
-    if (diasParaLiberacao === 0 && now.getHours() > hours || 
-        (now.getHours() === hours && now.getMinutes() >= minutes)) {
-      proximaLiberacao.setDate(proximaLiberacao.getDate() + 7);
+    // Se o horário é para hoje mas já passou, considerar para o próximo dia
+    if (newTime <= now) {
+      newTime.setDate(newTime.getDate() + 1);
     }
     
-    // Validar se faltam pelo menos 30 minutos para a liberação
-    const diffMinutes = (proximaLiberacao.getTime() - now.getTime()) / (1000 * 60);
+    // Verificar se faltam pelo menos 30 minutos
+    const diffMinutes = (newTime.getTime() - now.getTime()) / (1000 * 60);
     return diffMinutes >= 30;
   };
 
@@ -262,8 +262,8 @@ const GerenciarAulasAdmin = () => {
       setLoadingLiberacao(true);
       
       // Validar horário
-      if (!validateTime(horarioLiberacao, diaLiberacao)) {
-        toast.error('Horário inválido. Mínimo 30 minutos antes da próxima liberação.');
+      if (!validateTime(horarioLiberacao)) {
+        toast.error('O horário deve ser pelo menos 30 minutos após o atual.');
         return;
       }
 
@@ -290,8 +290,8 @@ const GerenciarAulasAdmin = () => {
       setLoadingFechamento(true);
       
       // Validar horário
-      if (!validateTime(horarioFechamento, diaFechamento)) {
-        toast.error('Horário inválido. Mínimo 30 minutos antes do próximo fechamento.');
+      if (!validateTime(horarioFechamento)) {
+        toast.error('O horário deve ser pelo menos 30 minutos após o atual.');
         return;
       }
 
@@ -386,7 +386,22 @@ const GerenciarAulasAdmin = () => {
 
               <div>
                 <Label className="text-black">Horário</Label>
-                <Input type="time" value={horarioLiberacao} onChange={e => setHorarioLiberacao(e.target.value)} disabled={!liberacaoAutomatica} className="border-black/30" />
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Input 
+                        type="time" 
+                        value={horarioLiberacao} 
+                        onChange={e => setHorarioLiberacao(e.target.value)} 
+                        disabled={!liberacaoAutomatica} 
+                        className="border-black/30" 
+                      />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Exemplo: Se agora são 14:00, o novo horário deve ser 14:30 ou mais tarde.</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               </div>
 
               <div className="flex justify-end pt-2">
@@ -571,31 +586,59 @@ const GerenciarAulasAdmin = () => {
 
       {/* Modal Liberar Aulas */}
       <Dialog open={showLiberarModal} onOpenChange={setShowLiberarModal}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-3xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <CalendarPlus className="w-5 h-5 text-green-600" />
-              Liberar Aulas desta Semana
+              Liberar Aulas da Semana
             </DialogTitle>
             <DialogDescription>
-              As seguintes aulas serão liberadas para inscrição:
+              As seguintes aulas serão liberadas para inscrição na próxima segunda-feira:
             </DialogDescription>
           </DialogHeader>
 
-          <div className="max-h-96 overflow-y-auto space-y-2">
-            {aulasParaLiberar.map(aula => <div key={aula.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <div className="flex-1">
-                  <div className="font-medium text-black">
-                    {diasSemana[aula.dia_semana]?.label} - {aula.horario}
+          <div className="max-h-96 overflow-y-auto space-y-3">
+            {aulasParaLiberar.length === 0 ? (
+              <div className="text-center py-8 text-black/60">
+                Não há aulas para liberar no momento.
+              </div>
+            ) : (
+              aulasParaLiberar.map(aula => {
+                // Calcular a data da próxima segunda-feira
+                const now = new Date();
+                const proximaSegunda = new Date(now);
+                proximaSegunda.setDate(now.getDate() + (1 + 7 - now.getDay()) % 7);
+                const dataFormatada = proximaSegunda.toLocaleDateString('pt-BR');
+                
+                return (
+                  <div key={aula.id} className="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200 shadow-sm">
+                    <div className="flex-1">
+                      <div className="font-semibold text-black text-lg">
+                        {aula.nivel} - {diasSemana[aula.dia_semana]?.label}
+                      </div>
+                      <div className="text-sm text-black/60 mt-1">
+                        <span className="font-medium">Professor:</span> {aula.professor_nome}
+                      </div>
+                      <div className="text-sm text-black/60">
+                        <span className="font-medium">Horário:</span> {aula.horario} • 
+                        <span className="font-medium ml-2">Capacidade:</span> {aula.capacidade} vagas
+                      </div>
+                      <div className="text-sm text-black/60">
+                        <span className="font-medium">Data da liberação:</span> {dataFormatada}
+                      </div>
+                    </div>
+                    <div className="flex flex-col items-end gap-2">
+                      <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200">
+                        {aula.data_aula ? 'Já Liberada' : 'Bloqueada'}
+                      </Badge>
+                      <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                        → Liberar
+                      </Badge>
+                    </div>
                   </div>
-                  <div className="text-sm text-black/60">
-                    {aula.nivel} • {aula.professor_nome} • {aula.capacidade} vagas
-                  </div>
-                </div>
-                <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                  Liberar
-                </Badge>
-              </div>)}
+                );
+              })
+            )}
           </div>
 
           <DialogFooter>
