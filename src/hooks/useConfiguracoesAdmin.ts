@@ -12,6 +12,7 @@ interface ConfiguracoesSistema {
   horarioLiberacao: string;
   mensagemPeriodoInscricao: string;
   mensagemRegrasSuspensao: string;
+  regraUmaAulaSemana: boolean;
 }
 
 export const useConfiguracoesAdmin = () => {
@@ -42,7 +43,8 @@ export const useConfiguracoesAdmin = () => {
           diaLiberacao: data.dia_liberacao,
           horarioLiberacao: data.horario_liberacao,
           mensagemPeriodoInscricao: data.mensagem_periodo_inscricao,
-          mensagemRegrasSuspensao: data.mensagem_regras_suspensao
+          mensagemRegrasSuspensao: data.mensagem_regras_suspensao,
+          regraUmaAulaSemana: data.regra_uma_aula_semana
         });
       } else {
         // Se não existir configuração, criar com valores padrão
@@ -54,7 +56,8 @@ export const useConfiguracoesAdmin = () => {
           diaLiberacao: 1,
           horarioLiberacao: '12:30',
           mensagemPeriodoInscricao: 'As inscrições abrem toda segunda-feira às 12:30.',
-          mensagemRegrasSuspensao: 'Faltas sem aviso resultam em suspensão de 4 semanas.'
+          mensagemRegrasSuspensao: 'Faltas sem aviso resultam em suspensão de 4 semanas.',
+          regraUmaAulaSemana: true
         };
         setConfiguracoes(configPadrao);
       }
@@ -77,7 +80,8 @@ export const useConfiguracoesAdmin = () => {
         dia_liberacao: novasConfiguracoes.diaLiberacao,
         horario_liberacao: novasConfiguracoes.horarioLiberacao,
         mensagem_periodo_inscricao: novasConfiguracoes.mensagemPeriodoInscricao,
-        mensagem_regras_suspensao: novasConfiguracoes.mensagemRegrasSuspensao
+        mensagem_regras_suspensao: novasConfiguracoes.mensagemRegrasSuspensao,
+        regra_uma_aula_semana: novasConfiguracoes.regraUmaAulaSemana
       };
       
       const { data, error } = await supabase
@@ -98,7 +102,8 @@ export const useConfiguracoesAdmin = () => {
           diaLiberacao: data.dia_liberacao,
           horarioLiberacao: data.horario_liberacao,
           mensagemPeriodoInscricao: data.mensagem_periodo_inscricao,
-          mensagemRegrasSuspensao: data.mensagem_regras_suspensao
+          mensagemRegrasSuspensao: data.mensagem_regras_suspensao,
+          regraUmaAulaSemana: data.regra_uma_aula_semana
         };
         setConfiguracoes(mappedData);
         return mappedData;

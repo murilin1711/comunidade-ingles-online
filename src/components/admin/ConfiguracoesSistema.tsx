@@ -29,7 +29,10 @@ const ConfiguracoesSistema = () => {
 
     // Mensagens para o Dashboard do Aluno
     mensagemPeriodoInscricao: 'As inscrições abrem toda segunda-feira às 12:30.',
-    mensagemRegrasSuspensao: 'Faltas sem aviso resultam em suspensão de 4 semanas.'
+    mensagemRegrasSuspensao: 'Faltas sem aviso resultam em suspensão de 4 semanas.',
+
+    // Regras de Inscrição
+    regraUmaAulaSemana: true
   });
 
   useEffect(() => {
@@ -46,7 +49,8 @@ const ConfiguracoesSistema = () => {
         diaLiberacao: configuracoes.diaLiberacao || 1,
         horarioLiberacao: configuracoes.horarioLiberacao || '12:30',
         mensagemPeriodoInscricao: configuracoes.mensagemPeriodoInscricao || 'As inscrições abrem toda segunda-feira às 12:30.',
-        mensagemRegrasSuspensao: configuracoes.mensagemRegrasSuspensao || 'Faltas sem aviso resultam em suspensão de 4 semanas.'
+        mensagemRegrasSuspensao: configuracoes.mensagemRegrasSuspensao || 'Faltas sem aviso resultam em suspensão de 4 semanas.',
+        regraUmaAulaSemana: configuracoes.regraUmaAulaSemana ?? true
       });
     }
   }, [configuracoes]);

@@ -209,6 +209,7 @@ export type Database = {
           id: string
           mensagem_periodo_inscricao: string
           mensagem_regras_suspensao: string
+          regra_uma_aula_semana: boolean
         }
         Insert: {
           atualizado_em?: string
@@ -222,6 +223,7 @@ export type Database = {
           id?: string
           mensagem_periodo_inscricao?: string
           mensagem_regras_suspensao?: string
+          regra_uma_aula_semana?: boolean
         }
         Update: {
           atualizado_em?: string
@@ -235,6 +237,7 @@ export type Database = {
           id?: string
           mensagem_periodo_inscricao?: string
           mensagem_regras_suspensao?: string
+          regra_uma_aula_semana?: boolean
         }
         Relationships: []
       }

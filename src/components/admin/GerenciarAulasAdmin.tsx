@@ -39,6 +39,7 @@ const GerenciarAulasAdmin = () => {
   const [horarioLiberacao, setHorarioLiberacao] = useState('12:30');
   const [diaFechamento, setDiaFechamento] = useState(0);
   const [horarioFechamento, setHorarioFechamento] = useState('18:00');
+  const [regraUmaAulaSemana, setRegraUmaAulaSemana] = useState(true);
   const [showLiberarModal, setShowLiberarModal] = useState(false);
   const [showFecharModal, setShowFecharModal] = useState(false);
   const [aulasParaLiberar, setAulasParaLiberar] = useState<AulaParaLiberar[]>([]);
@@ -48,6 +49,7 @@ const GerenciarAulasAdmin = () => {
   const [aulaParaEditar, setAulaParaEditar] = useState<any>(null);
   const [loadingLiberacao, setLoadingLiberacao] = useState(false);
   const [loadingFechamento, setLoadingFechamento] = useState(false);
+  const [loadingRegra, setLoadingRegra] = useState(false);
   const {
     configuracoes,
     fetchConfiguracoes,
@@ -82,6 +84,7 @@ const GerenciarAulasAdmin = () => {
     if (configuracoes) {
       setDiaLiberacao(configuracoes.diaLiberacao || 1);
       setHorarioLiberacao(configuracoes.horarioLiberacao || '12:30');
+      setRegraUmaAulaSemana(configuracoes.regraUmaAulaSemana ?? true);
     }
   }, [configuracoes]);
   const buscarAulasParaLiberar = async () => {
@@ -207,15 +210,51 @@ const GerenciarAulasAdmin = () => {
     return diaFechamento !== 0 || horarioFechamento !== '18:00';
   };
 
-  const validateTime = (horario: string) => {
+  const validateTime = (horario: string, diaLiberacao: number) => {
     const [hours, minutes] = horario.split(':').map(Number);
     const now = new Date();
-    const timeToCheck = new Date(now);
-    timeToCheck.setHours(hours, minutes, 0, 0);
     
-    // Validar se o horário não é muito próximo do atual (mínimo 30 min)
-    const diffMinutes = (timeToCheck.getTime() - now.getTime()) / (1000 * 60);
+    // Calcular próxima ocorrência do dia da semana da liberação
+    const proximaLiberacao = new Date(now);
+    const diasParaLiberacao = (diaLiberacao + 7 - now.getDay()) % 7;
+    proximaLiberacao.setDate(now.getDate() + diasParaLiberacao);
+    proximaLiberacao.setHours(hours, minutes, 0, 0);
+    
+    // Se é o mesmo dia, verificar se já passou o horário
+    if (diasParaLiberacao === 0 && now.getHours() > hours || 
+        (now.getHours() === hours && now.getMinutes() >= minutes)) {
+      proximaLiberacao.setDate(proximaLiberacao.getDate() + 7);
+    }
+    
+    // Validar se faltam pelo menos 30 minutos para a liberação
+    const diffMinutes = (proximaLiberacao.getTime() - now.getTime()) / (1000 * 60);
     return diffMinutes >= 30;
+  };
+
+  const hasRegraChanges = () => {
+    if (!configuracoes) return false;
+    return configuracoes.regraUmaAulaSemana !== regraUmaAulaSemana;
+  };
+
+  const salvarConfiguracaoRegra = async () => {
+    try {
+      setLoadingRegra(true);
+      
+      await salvarConfiguracoesHook({
+        ...configuracoes,
+        regraUmaAulaSemana
+      });
+      
+      toast.success('Regra de inscrição atualizada com sucesso!');
+      
+      // Recarregar configurações para sincronizar
+      await fetchConfiguracoes();
+    } catch (error) {
+      console.error('Erro ao salvar:', error);
+      toast.error('Erro ao salvar configurações da regra');
+    } finally {
+      setLoadingRegra(false);
+    }
   };
 
   const salvarConfiguracaoLiberacao = async () => {
@@ -223,8 +262,8 @@ const GerenciarAulasAdmin = () => {
       setLoadingLiberacao(true);
       
       // Validar horário
-      if (!validateTime(horarioLiberacao)) {
-        toast.error('Horário inválido. Mínimo 30 minutos antes da aula.');
+      if (!validateTime(horarioLiberacao, diaLiberacao)) {
+        toast.error('Horário inválido. Mínimo 30 minutos antes da próxima liberação.');
         return;
       }
 
@@ -251,8 +290,8 @@ const GerenciarAulasAdmin = () => {
       setLoadingFechamento(true);
       
       // Validar horário
-      if (!validateTime(horarioFechamento)) {
-        toast.error('Horário inválido. Mínimo 30 minutos antes da aula.');
+      if (!validateTime(horarioFechamento, diaFechamento)) {
+        toast.error('Horário inválido. Mínimo 30 minutos antes do próximo fechamento.');
         return;
       }
 
@@ -442,6 +481,58 @@ const GerenciarAulasAdmin = () => {
           </CardContent>
         </Card>
       </div>
+
+      <Separator className="my-[25px]" />
+
+      {/* Regras de Inscrição */}
+      <Card className="border-blue-200 my-[25px]">
+        <CardHeader>
+          <CardTitle className="text-black flex items-center gap-2">
+            <Settings className="w-5 h-5 text-blue-600" />
+            Regras de Inscrição
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <Label className="text-black font-medium">Regra de uma aula por semana</Label>
+              <p className="text-sm text-black/60 mt-1">
+                Quando ativada, os alunos só podem se inscrever em uma aula por semana
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <Switch 
+                checked={regraUmaAulaSemana} 
+                onCheckedChange={setRegraUmaAulaSemana} 
+              />
+              <Button
+                onClick={salvarConfiguracaoRegra}
+                disabled={loadingRegra || !hasRegraChanges()}
+                className="bg-blue-500 hover:bg-blue-600 text-white"
+                size="sm"
+              >
+                {loadingRegra ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                    Salvando...
+                  </>
+                ) : (
+                  'Salvar'
+                )}
+              </Button>
+            </div>
+          </div>
+          
+          <div className={`p-3 rounded-lg border ${regraUmaAulaSemana ? 'bg-blue-50 border-blue-200' : 'bg-gray-50 border-gray-200'}`}>
+            <p className={`text-sm ${regraUmaAulaSemana ? 'text-blue-800' : 'text-gray-800'}`}>
+              {regraUmaAulaSemana 
+                ? 'Regra ATIVADA: Alunos podem se inscrever em apenas uma aula por semana'
+                : 'Regra DESATIVADA: Alunos podem se inscrever em múltiplas aulas por semana'
+              }
+            </p>
+          </div>
+        </CardContent>
+      </Card>
 
       <Separator className="my-[25px]" />
 
