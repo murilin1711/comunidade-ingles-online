@@ -14,6 +14,7 @@ interface AvisoFalta {
   aula_id: string;
   data_aviso: string;
   status: string;
+  motivo?: string;
   aluno: {
     nome: string;
     matricula: string;
@@ -59,6 +60,7 @@ const GerenciarSuspensoes = () => {
           aula_id,
           data_aviso,
           status,
+          motivo,
           aluno:alunos!avisos_falta_aluno_id_fkey(
             nome,
             matricula,

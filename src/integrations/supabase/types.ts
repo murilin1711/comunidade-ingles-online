@@ -163,6 +163,7 @@ export type Database = {
           data_aplicacao: string | null
           data_aviso: string
           id: string
+          motivo: string | null
           semanas_suspensao: number | null
           status: string
           tipo_suspensao: string | null
@@ -175,6 +176,7 @@ export type Database = {
           data_aplicacao?: string | null
           data_aviso?: string
           id?: string
+          motivo?: string | null
           semanas_suspensao?: number | null
           status?: string
           tipo_suspensao?: string | null
@@ -187,6 +189,7 @@ export type Database = {
           data_aplicacao?: string | null
           data_aviso?: string
           id?: string
+          motivo?: string | null
           semanas_suspensao?: number | null
           status?: string
           tipo_suspensao?: string | null

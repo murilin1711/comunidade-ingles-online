@@ -21,6 +21,7 @@ interface AvisoFalta {
   aula_id: string;
   data_aviso: string;
   status: string;
+  motivo?: string;
   aluno: {
     nome: string;
     matricula: string;
@@ -103,6 +104,19 @@ const AvisosFaltaCard = ({ aviso, onAplicarSuspensao }: AvisosFaltaCardProps) =>
                 </div>
               </div>
             </div>
+
+            {/* Motivo da falta */}
+            {aviso.motivo && (
+              <div className="bg-blue-50/50 rounded-lg p-3 border border-blue-200">
+                <div className="flex items-center gap-2 mb-2">
+                  <AlertTriangle className="w-4 h-4 text-blue-600" />
+                  <span className="font-medium text-blue-800">Motivo da Falta</span>
+                </div>
+                <p className="text-blue-900 text-sm bg-white/70 p-2 rounded border">
+                  {aviso.motivo}
+                </p>
+              </div>
+            )}
 
             {/* Detalhes da aula */}
             <div className="bg-white/50 rounded-lg p-3 border border-black/10">

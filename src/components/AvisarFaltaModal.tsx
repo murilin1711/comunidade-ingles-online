@@ -2,6 +2,8 @@
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { toast } from '@/components/ui/sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { AlertTriangle } from 'lucide-react';
@@ -16,24 +18,37 @@ interface AvisarFaltaModalProps {
 const AvisarFaltaModal = ({ aulaId, alunoId, diaSemana, horario }: AvisarFaltaModalProps) => {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [motivo, setMotivo] = useState('');
 
   const handleAvisarFalta = async () => {
+    if (!motivo.trim()) {
+      toast.error('Por favor, escreva o motivo da falta.');
+      return;
+    }
+
     setLoading(true);
     try {
       const agora = new Date();
       
-      // Calcular se o aviso é com mais ou menos de 4 horas de antecedência
-      // Para simplificar, vamos assumir que a aula é hoje
-      const horasAntecedencia = 5; // Simulando mais de 4h para este exemplo
-      
-      const motivo = horasAntecedencia >= 4 ? 'aviso_4h' : 'aviso_menos_4h';
-      
+      // Criar aviso de falta para o administrador avaliar
+      const { error: avisoError } = await supabase
+        .from('avisos_falta')
+        .insert({
+          aluno_id: alunoId,
+          aula_id: aulaId,
+          motivo: motivo.trim(),
+          data_aviso: agora.toISOString(),
+          status: 'pendente'
+        });
+
+      if (avisoError) throw avisoError;
+
       // Marcar a inscrição como cancelada com aviso de falta
       const { error: updateError } = await supabase
         .from('inscricoes')
         .update({
           cancelamento: agora.toISOString(),
-          motivo_cancelamento: motivo,
+          motivo_cancelamento: 'aviso_pendente',
           atualizado_em: agora.toISOString()
         })
         .eq('aula_id', aulaId)
@@ -41,17 +56,6 @@ const AvisarFaltaModal = ({ aulaId, alunoId, diaSemana, horario }: AvisarFaltaMo
         .is('cancelamento', null);
 
       if (updateError) throw updateError;
-
-      // Aplicar suspensão se necessário
-      if (motivo === 'aviso_menos_4h') {
-        const { error: suspensaoError } = await supabase.rpc('aplicar_suspensao', {
-          aluno_uuid: alunoId,
-          motivo_param: motivo,
-          semanas_param: 1
-        });
-
-        if (suspensaoError) throw suspensaoError;
-      }
 
       // Promover próximo da lista de espera
       const { error: promoverError } = await supabase.rpc('promover_lista_espera', {
@@ -62,13 +66,13 @@ const AvisarFaltaModal = ({ aulaId, alunoId, diaSemana, horario }: AvisarFaltaMo
         console.error('Erro ao promover lista de espera:', promoverError);
       }
 
-      toast.success(
-        motivo === 'aviso_4h' 
-          ? 'Falta avisada com sucesso!' 
-          : 'Falta avisada. Você foi suspenso por 1 semana por avisar com menos de 4h de antecedência.'
-      );
+      toast.success('Aviso de falta enviado! Sua suspensão está sendo calculada por um administrador.');
       
       setOpen(false);
+      setMotivo('');
+      
+      // Recarregar a página para atualizar as listas
+      window.location.reload();
     } catch (error) {
       console.error('Erro ao avisar falta:', error);
       toast.error('Erro ao avisar falta. Tente novamente.');
@@ -93,16 +97,36 @@ const AvisarFaltaModal = ({ aulaId, alunoId, diaSemana, horario }: AvisarFaltaMo
           <p className="text-black/70">
             Você está prestes a avisar que faltará na aula de <strong>{diaSemana}</strong> às <strong>{horario}</strong>.
           </p>
+          
+          <div className="space-y-2">
+            <Label htmlFor="motivo" className="text-black font-medium">
+              Motivo da falta *
+            </Label>
+            <Textarea
+              id="motivo"
+              placeholder="Descreva o motivo da sua falta..."
+              value={motivo}
+              onChange={(e) => setMotivo(e.target.value)}
+              rows={3}
+              className="border-black/30 focus:border-yellow-500"
+              disabled={loading}
+            />
+          </div>
+          
           <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
             <p className="text-sm text-yellow-800">
-              <strong>Atenção:</strong> Avisos de falta com menos de 4 horas de antecedência resultam em suspensão de 1 semana.
+              <strong>Atenção:</strong> Sua inscrição será removida e a suspensão será calculada por um administrador baseada no motivo informado.
             </p>
           </div>
+          
           <div className="flex gap-2 pt-4">
             <Button
               type="button"
               variant="outline"
-              onClick={() => setOpen(false)}
+              onClick={() => {
+                setOpen(false);
+                setMotivo('');
+              }}
               className="flex-1 border-black/30 text-black hover:bg-yellow-50"
               disabled={loading}
             >
@@ -111,9 +135,9 @@ const AvisarFaltaModal = ({ aulaId, alunoId, diaSemana, horario }: AvisarFaltaMo
             <Button
               onClick={handleAvisarFalta}
               className="flex-1 bg-orange-500 hover:bg-orange-600 text-white font-semibold"
-              disabled={loading}
+              disabled={loading || !motivo.trim()}
             >
-              {loading ? 'Processando...' : 'Confirmar Falta'}
+              {loading ? 'Enviando...' : 'Enviar Aviso'}
             </Button>
           </div>
         </div>
