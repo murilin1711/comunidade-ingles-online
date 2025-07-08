@@ -9,7 +9,6 @@ import Logo from '@/components/Logo';
 import AvisarFaltaModal from '@/components/AvisarFaltaModal';
 import EstatisticasPresencaAluno from '@/components/EstatisticasPresencaAluno';
 import InscricoesDetalhes from '@/components/InscricoesDetalhes';
-import { useConfiguracoesAluno } from '@/hooks/useConfiguracoesAluno';
 
 interface Aula {
   id: string;
@@ -31,7 +30,6 @@ const DashboardAluno = () => {
   const [aulas, setAulas] = useState<Aula[]>([]);
   const [loading, setLoading] = useState(false);
   const { user, userData, logout } = useAuth();
-  const { configuracoes, isInscricaoAberta, getMensagemInscricaoFechada } = useConfiguracoesAluno();
 
   const diasSemana = [
     'Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'
@@ -142,7 +140,15 @@ const DashboardAluno = () => {
     return false;
   };
 
-  // Remover função local - agora usando do hook useConfiguracoesAluno
+  const isInscricaoAberta = () => {
+    const agora = new Date();
+    const diaSemana = agora.getDay(); // 0 = domingo, 1 = segunda, etc.
+    const hora = agora.getHours();
+    const minutos = agora.getMinutes();
+    
+    // Verificar se é segunda-feira (dia 1) às 12:30 ou depois
+    return diaSemana === 1 && (hora > 12 || (hora === 12 && minutos >= 30));
+  };
 
   const handleInscricao = async (aulaId: string) => {
     if (!user || !userData) return;
@@ -378,7 +384,7 @@ const DashboardAluno = () => {
         <Card className="mb-6 border-blue-500 bg-blue-50">
           <CardContent className="pt-6">
             <div className="text-blue-800">
-              <strong>Período de inscrições:</strong> {configuracoes?.mensagemPeriodoInscricao || 'As inscrições abrem toda segunda-feira às 12:30.'}
+              <strong>Período de inscrições:</strong> As inscrições abrem toda segunda-feira às 12:30.
               <p className="text-sm mt-1">
                 Você poderá se inscrever nas aulas disponíveis apenas durante este horário.
               </p>
@@ -394,7 +400,10 @@ const DashboardAluno = () => {
           <Card className="mb-6 border-orange-500 bg-orange-50">
             <CardContent className="pt-6">
               <div className="text-orange-800">
-                {getMensagemInscricaoFechada()}
+                <strong>Inscrições fechadas:</strong> As inscrições estão fechadas no momento.
+                <p className="text-sm mt-1">
+                  Aguarde até segunda-feira às 12:30 para se inscrever nas aulas.
+                </p>
               </div>
             </CardContent>
           </Card>
@@ -524,7 +533,9 @@ const DashboardAluno = () => {
           </CardHeader>
           <CardContent>
             <div className="text-orange-800 space-y-2">
-              {configuracoes?.mensagemRegrasSuspensao || 'Faltas sem aviso resultam em suspensão de 4 semanas.'}
+              <p><strong>Falta com aviso ≥ 4h antes da aula:</strong> 2 semanas de suspensão</p>
+              <p><strong>Falta com aviso &lt; 4h antes da aula:</strong> 3 semanas de suspensão</p>
+              <p><strong>Falta sem aviso:</strong> 4 semanas de suspensão</p>
             </div>
           </CardContent>
         </Card>
