@@ -33,13 +33,16 @@ const ConfiguracoesSistema = () => {
     mensagemRegrasSuspensao: 'Faltas sem aviso resultam em suspensão de 4 semanas.'
   });
 
+  const [hasChanges, setHasChanges] = useState(false);
+  const [originalData, setOriginalData] = useState(formData);
+
   useEffect(() => {
     fetchConfiguracoes();
   }, [fetchConfiguracoes]);
 
   useEffect(() => {
     if (configuracoes) {
-      setFormData({
+      const newData = {
         faltaComAvisoMais4h: configuracoes.faltaComAvisoMais4h || 2,
         faltaComAvisoMenos4h: configuracoes.faltaComAvisoMenos4h || 3,
         faltaSemAviso: configuracoes.faltaSemAviso || 4,
@@ -48,21 +51,56 @@ const ConfiguracoesSistema = () => {
         horarioLiberacao: configuracoes.horarioLiberacao || '12:30',
         mensagemPeriodoInscricao: configuracoes.mensagemPeriodoInscricao || 'As inscrições abrem toda segunda-feira às 12:30.',
         mensagemRegrasSuspensao: configuracoes.mensagemRegrasSuspensao || 'Faltas sem aviso resultam em suspensão de 4 semanas.'
-      });
+      };
+      setFormData(newData);
+      setOriginalData(newData);
+      setHasChanges(false);
     }
   }, [configuracoes]);
 
-  const handleInputChange = (field: string, value: string | number) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
+  // Função para gerar mensagens automaticamente
+  const gerarMensagensAutomaticas = (diaLiberacao: number, horarioLiberacao: string) => {
+    const diasSemana = [
+      'domingo', 'segunda-feira', 'terça-feira', 'quarta-feira', 
+      'quinta-feira', 'sexta-feira', 'sábado'
+    ];
+    
+    const diaNome = diasSemana[diaLiberacao];
+    return {
+      mensagemPeriodoInscricao: `As inscrições abrem toda ${diaNome} às ${horarioLiberacao}.`,
+      mensagemRegrasSuspensao: 'Faltas sem aviso resultam em suspensão de 4 semanas.'
+    };
   };
+
+  const handleInputChange = (field: string, value: string | number) => {
+    setFormData(prev => {
+      const newData = { ...prev, [field]: value };
+      
+      // Se mudou dia ou horário de liberação, atualizar mensagens automaticamente
+      if (field === 'diaLiberacao' || field === 'horarioLiberacao') {
+        const novasDiaLiber = field === 'diaLiberacao' ? Number(value) : newData.diaLiberacao;
+        const novoHorarioLiber = field === 'horarioLiberacao' ? String(value) : newData.horarioLiberacao;
+        
+        const mensagensAtualizadas = gerarMensagensAutomaticas(novasDiaLiber, novoHorarioLiber);
+        Object.assign(newData, mensagensAtualizadas);
+      }
+      
+      return newData;
+    });
+  };
+
+  // Detectar mudanças para mostrar botão salvar
+  useEffect(() => {
+    const hasChangesNow = JSON.stringify(formData) !== JSON.stringify(originalData);
+    setHasChanges(hasChangesNow);
+  }, [formData, originalData]);
 
   const handleSalvar = async () => {
     try {
       await salvarConfiguracoes(formData);
-      toast.success('Configurações salvas com sucesso!');
+      setOriginalData(formData);
+      setHasChanges(false);
+      toast.success('Configurações salvas com sucesso! As regras de liberação e fechamento foram atualizadas automaticamente.');
     } catch (error) {
       console.error('Erro ao salvar configurações:', error);
       toast.error('Erro ao salvar configurações');
@@ -262,17 +300,19 @@ const ConfiguracoesSistema = () => {
         </CardContent>
       </Card>
 
-      {/* Botão Salvar */}
-      <div className="flex justify-end">
-        <Button
-          onClick={handleSalvar}
-          className="bg-yellow-500 hover:bg-yellow-600 text-black"
-          disabled={loading}
-        >
-          <Save className="w-4 h-4 mr-2" />
-          Salvar Configurações
-        </Button>
-      </div>
+      {/* Botão Salvar - só aparece quando há mudanças */}
+      {hasChanges && (
+        <div className="flex justify-end">
+          <Button
+            onClick={handleSalvar}
+            className="bg-yellow-500 hover:bg-yellow-600 text-black animate-pulse"
+            disabled={loading}
+          >
+            <Save className="w-4 h-4 mr-2" />
+            Salvar Configurações
+          </Button>
+        </div>
+      )}
     </div>
   );
 };
