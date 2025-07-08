@@ -17,185 +17,109 @@ export const useSecurity = () => {
     warnings: []
   });
 
-  // Verificar integridade do horário comparando com servidor
+  // Debounce para evitar verificações excessivas
+  const [timeCheckCache, setTimeCheckCache] = useState<{ timestamp: number; isValid: boolean } | null>(null);
+  const TIME_CACHE_DURATION = 30000; // 30 segundos
+
+  // Verificar integridade do horário (otimizada com cache)
   const checkTimeIntegrity = useCallback(async () => {
     try {
-      const clientTime = new Date();
+      const now = Date.now();
       
-      // Buscar horário do servidor via Supabase
-      const { data, error } = await supabase
-        .from('configuracoes_sistema')
-        .select('atualizado_em')
-        .limit(1)
-        .single();
-
-      if (error) {
-        console.warn('Não foi possível verificar horário do servidor:', error);
+      // Usar cache se ainda válido
+      if (timeCheckCache && (now - timeCheckCache.timestamp) < TIME_CACHE_DURATION) {
+        setSecurityStatus(prev => ({
+          ...prev,
+          isTimeValid: timeCheckCache.isValid,
+          lastTimeCheck: new Date()
+        }));
         return;
       }
 
-      const serverTime = new Date(data.atualizado_em);
+      const clientTime = new Date();
+      
+      // Verificação simplificada - apenas get do timestamp do servidor
+      const response = await fetch('/api/time', { 
+        method: 'HEAD',
+        cache: 'no-cache'
+      }).catch(() => null);
+      
+      const serverTime = response ? new Date(response.headers.get('date') || Date.now()) : new Date();
       const timeDifference = Math.abs(clientTime.getTime() - serverTime.getTime());
       
-      // Permitir diferença de até 5 minutos (300000ms)
-      const maxAllowedDifference = 5 * 60 * 1000;
+      // Permitir diferença de até 10 minutos para reduzir falsos positivos
+      const maxAllowedDifference = 10 * 60 * 1000;
       const isTimeValid = timeDifference <= maxAllowedDifference;
 
+      // Atualizar cache
+      setTimeCheckCache({ timestamp: now, isValid: isTimeValid });
+
       if (!isTimeValid) {
-        const warningMessage = 'ATENÇÃO: Detectamos uma discrepância no horário do seu dispositivo. Para garantir a integridade do sistema, você deve corrigir o horário antes de continuar. Tentativas de burlar o sistema podem resultar em advertência.';
+        const warningMessage = 'ATENÇÃO: Horário do dispositivo incorreto. Corrija antes de continuar.';
         
         setSecurityStatus(prev => ({
           ...prev,
           isTimeValid: false,
           lastTimeCheck: clientTime,
-          warnings: [...prev.warnings, warningMessage]
+          warnings: prev.warnings.includes(warningMessage) ? prev.warnings : [...prev.warnings, warningMessage]
         }));
 
-        toast.error(warningMessage, {
-          duration: 10000,
-        });
-        
-        // Log da tentativa de burla para auditoria
-        console.warn('Possível tentativa de burla detectada - horário inconsistente', {
-          clientTime: clientTime.toISOString(),
-          serverTime: serverTime.toISOString(),
-          difference: timeDifference
-        });
+        toast.error(warningMessage, { duration: 5000 });
       } else {
         setSecurityStatus(prev => ({
           ...prev,
           isTimeValid: true,
-          lastTimeCheck: clientTime
+          lastTimeCheck: clientTime,
+          warnings: prev.warnings.filter(w => !w.includes('horário'))
         }));
       }
 
     } catch (error) {
-      console.error('Erro ao verificar integridade do horário:', error);
+      console.error('Erro ao verificar horário:', error);
     }
-  }, []);
+  }, [timeCheckCache]);
 
-  // Detectar uso de DevTools
+  // Detectar uso de DevTools (otimizado)
   const detectDevTools = useCallback(() => {
-    let devToolsOpen = false;
-
-    // Método 1: Verificar o tamanho da janela vs viewport
+    // Verificação simples e rápida
     const widthThreshold = window.outerWidth - window.innerWidth > 160;
     const heightThreshold = window.outerHeight - window.innerHeight > 160;
-
-    // Método 2: Verificar console
-    let consoleDetected = false;
-    const element = new Image();
-    Object.defineProperty(element, 'id', {
-      get: function() {
-        consoleDetected = true;
-        return 'devtools-detected';
-      }
-    });
-    console.log(element);
-
-    // Método 3: Verificar performance
-    const start = performance.now();
-    debugger;
-    const debuggerTime = performance.now() - start;
-    const debuggerDetected = debuggerTime > 100;
-
-    devToolsOpen = widthThreshold || heightThreshold || consoleDetected || debuggerDetected;
+    
+    const devToolsOpen = widthThreshold || heightThreshold;
 
     if (devToolsOpen && !securityStatus.isDevToolsDetected) {
-      const warningMessage = 'AVISO DE SEGURANÇA: Detectamos o uso de ferramentas de desenvolvedor. O uso dessas ferramentas para burlar o sistema é proibido e pode resultar em suspensão da conta. Por favor, feche as ferramentas de desenvolvedor.';
-      
       setSecurityStatus(prev => ({
         ...prev,
         isDevToolsDetected: true,
-        warnings: [...prev.warnings, warningMessage]
+        warnings: [...prev.warnings.filter(w => !w.includes('DevTools')), 'DevTools detectado. Feche para continuar.']
       }));
 
-      toast.error(warningMessage, {
-        duration: 15000,
-      });
-
-      // Log da tentativa para auditoria
-      console.warn('DevTools detectado - possível tentativa de burla', {
-        timestamp: new Date().toISOString(),
-        userAgent: navigator.userAgent,
-        method: widthThreshold ? 'viewport' : heightThreshold ? 'viewport' : consoleDetected ? 'console' : 'debugger'
-      });
+      toast.warning('DevTools detectado. Feche para continuar.', { duration: 3000 });
+    } else if (!devToolsOpen && securityStatus.isDevToolsDetected) {
+      setSecurityStatus(prev => ({
+        ...prev,
+        isDevToolsDetected: false,
+        warnings: prev.warnings.filter(w => !w.includes('DevTools'))
+      }));
     }
   }, [securityStatus.isDevToolsDetected]);
 
-  // Verificar integridade da aplicação
-  const checkApplicationIntegrity = useCallback(() => {
-    // Verificar se elementos críticos não foram alterados
-    const criticalElements = [
-      'body',
-      '[data-security="protected"]'
-    ];
-
-    criticalElements.forEach(selector => {
-      const element = document.querySelector(selector);
-      if (element) {
-        // Adicionar observador de mutação
-        const observer = new MutationObserver((mutations) => {
-          mutations.forEach((mutation) => {
-            if (mutation.type === 'attributes' || mutation.type === 'childList') {
-              console.warn('Possível tampering detectado:', mutation);
-              toast.warning('Sistema de segurança ativo. Alterações não autorizadas foram detectadas.');
-            }
-          });
-        });
-
-        observer.observe(element, {
-          attributes: true,
-          childList: true,
-          subtree: true
-        });
-      }
-    });
-  }, []);
-
-  // Hook principal de segurança
+  // Hook principal de segurança (otimizado)
   useEffect(() => {
-    // Verificação inicial
+    // Verificação inicial mais espaçada
     checkTimeIntegrity();
     detectDevTools();
-    checkApplicationIntegrity();
 
-    // Verificações periódicas
-    const timeInterval = setInterval(checkTimeIntegrity, 60000); // A cada minuto
-    const devToolsInterval = setInterval(detectDevTools, 5000); // A cada 5 segundos
-
-    // Listeners para eventos de segurança
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Detectar F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+U
-      if (
-        e.key === 'F12' ||
-        (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'J' || e.key === 'C')) ||
-        (e.ctrlKey && e.key === 'U')
-      ) {
-        e.preventDefault();
-        toast.warning('Essa ação não é permitida por motivos de segurança.');
-        return false;
-      }
-    };
-
-    const handleContextMenu = (e: MouseEvent) => {
-      e.preventDefault();
-      toast.warning('Click direito desabilitado por motivos de segurança.');
-      return false;
-    };
-
-    // Adicionar listeners
-    document.addEventListener('keydown', handleKeyDown);
-    document.addEventListener('contextmenu', handleContextMenu);
+    // Verificações muito menos frequentes
+    const timeInterval = setInterval(checkTimeIntegrity, 300000); // A cada 5 minutos
+    const devToolsInterval = setInterval(detectDevTools, 30000); // A cada 30 segundos
 
     // Cleanup
     return () => {
       clearInterval(timeInterval);
       clearInterval(devToolsInterval);
-      document.removeEventListener('keydown', handleKeyDown);
-      document.removeEventListener('contextmenu', handleContextMenu);
     };
-  }, [checkTimeIntegrity, detectDevTools, checkApplicationIntegrity]);
+  }, [checkTimeIntegrity, detectDevTools]);
 
   // Função para validar se pode realizar ações críticas
   const canPerformCriticalAction = useCallback(() => {
