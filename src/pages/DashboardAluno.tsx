@@ -18,6 +18,7 @@ interface Aula {
   capacidade: number;
   professor_nome: string;
   nivel: string;
+  inscricoes_abertas: boolean;
   inscricoes_count: number;
   minha_inscricao?: {
     id: string;
@@ -170,7 +171,15 @@ const DashboardAluno = () => {
     return false;
   };
 
+  // Verifica se há pelo menos uma aula com inscrições abertas
   const isInscricaoAberta = () => {
+    // Se há aulas com inscricoes_abertas = true, então as inscrições estão abertas
+    const aulasComInscricoesAbertas = aulas.some(aula => aula.inscricoes_abertas);
+    if (aulasComInscricoesAbertas) {
+      return true;
+    }
+
+    // Senão, verificar pelo horário automático
     if (!configuracoes) {
       // Fallback para valores padrão
       const agora = new Date();
@@ -445,7 +454,7 @@ const DashboardAluno = () => {
         </Card>
 
         {/* Período de inscrições e aulas disponíveis */}
-        {!inscricaoAberta && aulas.length > 0 && (
+        {!inscricaoAberta && aulas.length > 0 && !aulas.some(aula => aula.inscricoes_abertas) && (
           <Card className="mb-6 border-orange-500 bg-orange-50">
             <CardContent className="pt-6">
               <div className="text-orange-800">
@@ -487,7 +496,7 @@ const DashboardAluno = () => {
             const vagasRestantes = aula.capacidade - aula.inscricoes_count;
             const suspenso = isAlunoSuspenso();
             const jaInscrito = !!aula.minha_inscricao;
-            const podeSeInscrever = inscricaoAberta && !suspenso && !jaInscrito;
+            const podeSeInscrever = (inscricaoAberta || aula.inscricoes_abertas) && !suspenso && !jaInscrito;
             
             return (
               <Card key={aula.id} className="border-black/20 shadow-md">
