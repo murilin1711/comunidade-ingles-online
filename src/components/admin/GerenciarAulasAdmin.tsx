@@ -13,10 +13,12 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/sonner';
-import { Calendar, Clock, Plus, Lock, Settings, CalendarPlus, LockKeyhole, RefreshCw, BookOpen, Activity } from 'lucide-react';
+import { CalendarPlus, LockKeyhole, Settings, BookOpen, Activity, RefreshCw, Lock } from 'lucide-react';
 import { useConfiguracoesAdmin } from '@/hooks/useConfiguracoesAdmin';
 import CriarEditarAulas from './CriarEditarAulas';
 import GerenciarAulasAtivas from './GerenciarAulasAtivas';
+import ClassReleaseModal from './config/ClassReleaseModal';
+import ClassCloseModal from './config/ClassCloseModal';
 interface AulaParaLiberar {
   id: string;
   dia_semana: number;
@@ -26,6 +28,7 @@ interface AulaParaLiberar {
   capacidade: number;
   data_aula: string | null;
   ativa: boolean;
+  inscricoes_abertas: boolean;
 }
 interface AulaParaFechar {
   id: string;
@@ -104,8 +107,9 @@ const GerenciarAulasAdmin = () => {
           professor_nome,
           capacidade,
           data_aula,
-          ativa
-        `).eq('ativa', true).is('data_aula', null) // Aulas que ainda não foram liberadas
+          ativa,
+          inscricoes_abertas
+        `).eq('ativa', true).eq('inscricoes_abertas', false) // Aulas ativas com inscrições fechadas
       .order('dia_semana').order('horario');
       if (error) throw error;
       setAulasParaLiberar(data || []);
@@ -129,11 +133,12 @@ const GerenciarAulasAdmin = () => {
           horario,
           nivel,
           professor_nome,
+          inscricoes_abertas,
           inscricoes_aceitas:inscricoes!inscricoes_aula_id_fkey(
             id,
             status
           )
-        `).eq('ativa', true).not('data_aula', 'is', null) // Aulas que já foram liberadas e estão ativas
+        `).eq('ativa', true).eq('inscricoes_abertas', true).not('data_aula', 'is', null) // Aulas ativas com inscrições abertas
       .order('dia_semana').order('horario');
       if (error) throw error;
       const aulasComInscricoes = data?.map(aula => ({
@@ -593,146 +598,24 @@ const GerenciarAulasAdmin = () => {
         </CardContent>
       </Card>
 
-      {/* Modal Liberar Aulas */}
-      <Dialog open={showLiberarModal} onOpenChange={setShowLiberarModal}>
-        <DialogContent className="max-w-3xl">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <CalendarPlus className="w-5 h-5 text-green-600" />
-              Liberar Aulas Agora
-            </DialogTitle>
-            <DialogDescription>
-              As inscrições serão abertas imediatamente
-            </DialogDescription>
-          </DialogHeader>
+      {/* Modais */}
+      <ClassReleaseModal
+        open={showLiberarModal}
+        onOpenChange={setShowLiberarModal}
+        aulas={aulasParaLiberar}
+        loading={loading}
+        onConfirm={liberarAulasSemana}
+      />
 
-          <div className="bg-blue-50 p-3 rounded-lg border border-blue-200 mb-4">
-            <p className="text-blue-800 text-sm font-medium">
-              Horário atual: {new Date().toLocaleTimeString('pt-BR', { 
-                hour: '2-digit', 
-                minute: '2-digit' 
-              })}
-            </p>
-          </div>
-
-          <div className="max-h-96 overflow-y-auto space-y-3">
-            {aulasParaLiberar.length === 0 ? (
-              <div className="text-center py-8 text-black/60">
-                Não há aulas para liberar no momento.
-              </div>
-            ) : (
-              aulasParaLiberar.map(aula => (
-                <div key={aula.id} className="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200 shadow-sm">
-                  <div className="flex-1">
-                    <div className="font-semibold text-black text-lg">
-                      {aula.nivel} - {diasSemana[aula.dia_semana]?.label}
-                    </div>
-                    <div className="text-sm text-black/60 mt-1">
-                      <span className="font-medium">Professor:</span> {aula.professor_nome}
-                    </div>
-                    <div className="text-sm text-black/60">
-                      <span className="font-medium">Horário:</span> {aula.horario} • 
-                      <span className="font-medium ml-2">Capacidade:</span> {aula.capacidade} vagas
-                    </div>
-                  </div>
-                  <div className="flex flex-col items-end gap-2">
-                    <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200">
-                      Bloqueada
-                    </Badge>
-                    <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                      → Liberar Agora
-                    </Badge>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowLiberarModal(false)}>
-              Cancelar
-            </Button>
-            <Button onClick={liberarAulasSemana} disabled={loading} className="bg-green-500 hover:bg-green-600 text-white">
-              {loading ? (
-                <>
-                  <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                  Processando...
-                </>
-              ) : (
-                'Liberar Agora'
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Modal Fechar Inscrições */}
-      <Dialog open={showFecharModal} onOpenChange={setShowFecharModal}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Lock className="w-5 h-5 text-red-600" />
-              Confirmar Fechamento de Inscrições
-            </DialogTitle>
-            <DialogDescription>
-              As inscrições serão encerradas, mas as aulas permanecerão visíveis
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="max-h-96 overflow-y-auto space-y-2">
-            {aulasParaFechar.length === 0 ? (
-              <div className="text-center py-8 text-black/60">
-                Não há aulas com inscrições para fechar no momento.
-              </div>
-            ) : (
-              aulasParaFechar.map(aula => (
-                <div key={aula.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                  <Checkbox 
-                    checked={!aulasExcluidas.includes(aula.id)} 
-                    onCheckedChange={() => toggleExclusaoAula(aula.id)} 
-                  />
-                  <div className="flex-1">
-                    <div className="font-medium text-black">
-                      {aula.nivel} - {diasSemana[aula.dia_semana]?.label}
-                    </div>
-                    <div className="text-sm text-black/60">
-                      <span className="font-medium">Professor:</span> {aula.professor_nome} • 
-                      <span className="font-medium ml-2">Horário:</span> {aula.horario} • 
-                      <span className="font-medium ml-2">{aula.inscricoes_ativas}</span> inscrições ativas
-                    </div>
-                  </div>
-                  <Badge 
-                    variant={aulasExcluidas.includes(aula.id) ? "secondary" : "destructive"} 
-                    className={aulasExcluidas.includes(aula.id) ? "" : "bg-red-500 text-white"}
-                  >
-                    {aulasExcluidas.includes(aula.id) ? 'Manter Aberta' : 'Fechar'}
-                  </Badge>
-                </div>
-              ))
-            )}
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowFecharModal(false)}>
-              Cancelar
-            </Button>
-            <Button 
-              onClick={fecharInscricoes} 
-              disabled={loading} 
-              className="bg-red-500 hover:bg-red-600 text-white"
-            >
-              {loading ? (
-                <>
-                  <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                  Processando...
-                </>
-              ) : (
-                'Confirmar Fechamento'
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ClassCloseModal
+        open={showFecharModal}
+        onOpenChange={setShowFecharModal}
+        aulas={aulasParaFechar}
+        aulasExcluidas={aulasExcluidas}
+        loading={loading}
+        onConfirm={fecharInscricoes}
+        onToggleExclusao={toggleExclusaoAula}
+      />
         </TabsContent>
       </Tabs>
     </div>;
