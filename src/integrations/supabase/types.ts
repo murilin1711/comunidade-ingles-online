@@ -99,6 +99,7 @@ export type Database = {
           dia_semana: number
           horario: string
           id: string
+          inscricoes_abertas: boolean
           link_meet: string
           nivel: string
           professor_id: string
@@ -113,6 +114,7 @@ export type Database = {
           dia_semana: number
           horario: string
           id?: string
+          inscricoes_abertas?: boolean
           link_meet: string
           nivel: string
           professor_id: string
@@ -127,6 +129,7 @@ export type Database = {
           dia_semana?: number
           horario?: string
           id?: string
+          inscricoes_abertas?: boolean
           link_meet?: string
           nivel?: string
           professor_id?: string

@@ -156,22 +156,27 @@ const GerenciarAulasAdmin = () => {
   const liberarAulasSemana = async () => {
     try {
       setLoading(true);
-      const dataLiberacao = new Date();
-      const proximaSegunda = new Date(dataLiberacao);
-      proximaSegunda.setDate(dataLiberacao.getDate() + (1 + 7 - dataLiberacao.getDay()) % 7);
+      const agora = new Date();
+      const dataLiberacao = agora.toISOString().split('T')[0];
+      const horarioLiberacao = agora.toTimeString().split(' ')[0];
+
       const updates = aulasParaLiberar.map(aula => ({
         id: aula.id,
-        data_aula: proximaSegunda.toISOString().split('T')[0]
+        data_aula: dataLiberacao,
+        inscricoes_abertas: true
       }));
+
       for (const update of updates) {
         const {
           error
         } = await supabase.from('aulas').update({
-          data_aula: update.data_aula
+          data_aula: update.data_aula,
+          inscricoes_abertas: true
         }).eq('id', update.id);
         if (error) throw error;
       }
-      toast.success(`${updates.length} aulas liberadas para a semana!`);
+
+      toast.success(`${updates.length} aulas liberadas imediatamente às ${horarioLiberacao}!`);
       setShowLiberarModal(false);
       setAulasParaLiberar([]);
     } catch (error) {
@@ -184,16 +189,20 @@ const GerenciarAulasAdmin = () => {
   const fecharInscricoes = async () => {
     try {
       setLoading(true);
+      const agora = new Date();
+      const horarioFechamento = agora.toTimeString().split(' ')[0];
       const aulasParaFecharFiltradas = aulasParaFechar.filter(aula => !aulasExcluidas.includes(aula.id));
+      
       for (const aula of aulasParaFecharFiltradas) {
         const {
           error
         } = await supabase.from('aulas').update({
-          ativa: false
+          inscricoes_abertas: false
         }).eq('id', aula.id);
         if (error) throw error;
       }
-      toast.success(`Inscrições fechadas para ${aulasParaFecharFiltradas.length} aulas!`);
+      
+      toast.success(`Inscrições fechadas para ${aulasParaFecharFiltradas.length} aulas às ${horarioFechamento}!`);
       setShowFecharModal(false);
       setAulasParaFechar([]);
       setAulasExcluidas([]);
@@ -590,12 +599,21 @@ const GerenciarAulasAdmin = () => {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <CalendarPlus className="w-5 h-5 text-green-600" />
-              Liberar Aulas da Semana
+              Liberar Aulas Agora
             </DialogTitle>
             <DialogDescription>
-              As seguintes aulas serão liberadas para inscrição na próxima segunda-feira:
+              As inscrições serão abertas imediatamente
             </DialogDescription>
           </DialogHeader>
+
+          <div className="bg-blue-50 p-3 rounded-lg border border-blue-200 mb-4">
+            <p className="text-blue-800 text-sm font-medium">
+              Horário atual: {new Date().toLocaleTimeString('pt-BR', { 
+                hour: '2-digit', 
+                minute: '2-digit' 
+              })}
+            </p>
+          </div>
 
           <div className="max-h-96 overflow-y-auto space-y-3">
             {aulasParaLiberar.length === 0 ? (
@@ -603,41 +621,30 @@ const GerenciarAulasAdmin = () => {
                 Não há aulas para liberar no momento.
               </div>
             ) : (
-              aulasParaLiberar.map(aula => {
-                // Calcular a data da próxima segunda-feira
-                const now = new Date();
-                const proximaSegunda = new Date(now);
-                proximaSegunda.setDate(now.getDate() + (1 + 7 - now.getDay()) % 7);
-                const dataFormatada = proximaSegunda.toLocaleDateString('pt-BR');
-                
-                return (
-                  <div key={aula.id} className="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200 shadow-sm">
-                    <div className="flex-1">
-                      <div className="font-semibold text-black text-lg">
-                        {aula.nivel} - {diasSemana[aula.dia_semana]?.label}
-                      </div>
-                      <div className="text-sm text-black/60 mt-1">
-                        <span className="font-medium">Professor:</span> {aula.professor_nome}
-                      </div>
-                      <div className="text-sm text-black/60">
-                        <span className="font-medium">Horário:</span> {aula.horario} • 
-                        <span className="font-medium ml-2">Capacidade:</span> {aula.capacidade} vagas
-                      </div>
-                      <div className="text-sm text-black/60">
-                        <span className="font-medium">Data da liberação:</span> {dataFormatada}
-                      </div>
+              aulasParaLiberar.map(aula => (
+                <div key={aula.id} className="flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200 shadow-sm">
+                  <div className="flex-1">
+                    <div className="font-semibold text-black text-lg">
+                      {aula.nivel} - {diasSemana[aula.dia_semana]?.label}
                     </div>
-                    <div className="flex flex-col items-end gap-2">
-                      <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200">
-                        {aula.data_aula ? 'Já Liberada' : 'Bloqueada'}
-                      </Badge>
-                      <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                        → Liberar
-                      </Badge>
+                    <div className="text-sm text-black/60 mt-1">
+                      <span className="font-medium">Professor:</span> {aula.professor_nome}
+                    </div>
+                    <div className="text-sm text-black/60">
+                      <span className="font-medium">Horário:</span> {aula.horario} • 
+                      <span className="font-medium ml-2">Capacidade:</span> {aula.capacidade} vagas
                     </div>
                   </div>
-                );
-              })
+                  <div className="flex flex-col items-end gap-2">
+                    <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200">
+                      Bloqueada
+                    </Badge>
+                    <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                      → Liberar Agora
+                    </Badge>
+                  </div>
+                </div>
+              ))
             )}
           </div>
 
@@ -646,8 +653,14 @@ const GerenciarAulasAdmin = () => {
               Cancelar
             </Button>
             <Button onClick={liberarAulasSemana} disabled={loading} className="bg-green-500 hover:bg-green-600 text-white">
-              {loading && <RefreshCw className="w-4 h-4 mr-2 animate-spin" />}
-              Confirmar Liberação
+              {loading ? (
+                <>
+                  <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                  Processando...
+                </>
+              ) : (
+                'Liberar Agora'
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -659,37 +672,63 @@ const GerenciarAulasAdmin = () => {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Lock className="w-5 h-5 text-red-600" />
-              Fechar Inscrições
+              Confirmar Fechamento de Inscrições
             </DialogTitle>
             <DialogDescription>
-              Selecione as aulas que terão suas inscrições fechadas:
+              As inscrições serão encerradas, mas as aulas permanecerão visíveis
             </DialogDescription>
           </DialogHeader>
 
           <div className="max-h-96 overflow-y-auto space-y-2">
-            {aulasParaFechar.map(aula => <div key={aula.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                <Checkbox checked={!aulasExcluidas.includes(aula.id)} onCheckedChange={() => toggleExclusaoAula(aula.id)} />
-                <div className="flex-1">
-                  <div className="font-medium text-black">
-                    {diasSemana[aula.dia_semana]?.label} - {aula.horario}
+            {aulasParaFechar.length === 0 ? (
+              <div className="text-center py-8 text-black/60">
+                Não há aulas com inscrições para fechar no momento.
+              </div>
+            ) : (
+              aulasParaFechar.map(aula => (
+                <div key={aula.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                  <Checkbox 
+                    checked={!aulasExcluidas.includes(aula.id)} 
+                    onCheckedChange={() => toggleExclusaoAula(aula.id)} 
+                  />
+                  <div className="flex-1">
+                    <div className="font-medium text-black">
+                      {aula.nivel} - {diasSemana[aula.dia_semana]?.label}
+                    </div>
+                    <div className="text-sm text-black/60">
+                      <span className="font-medium">Professor:</span> {aula.professor_nome} • 
+                      <span className="font-medium ml-2">Horário:</span> {aula.horario} • 
+                      <span className="font-medium ml-2">{aula.inscricoes_ativas}</span> inscrições ativas
+                    </div>
                   </div>
-                  <div className="text-sm text-black/60">
-                    {aula.nivel} • {aula.professor_nome} • {aula.inscricoes_ativas} inscrições
-                  </div>
+                  <Badge 
+                    variant={aulasExcluidas.includes(aula.id) ? "secondary" : "destructive"} 
+                    className={aulasExcluidas.includes(aula.id) ? "" : "bg-red-500 text-white"}
+                  >
+                    {aulasExcluidas.includes(aula.id) ? 'Manter Aberta' : 'Fechar'}
+                  </Badge>
                 </div>
-                <Badge variant={aulasExcluidas.includes(aula.id) ? "secondary" : "destructive"} className={aulasExcluidas.includes(aula.id) ? "" : "bg-red-500 text-white"}>
-                  {aulasExcluidas.includes(aula.id) ? 'Manter' : 'Fechar'}
-                </Badge>
-              </div>)}
+              ))
+            )}
           </div>
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowFecharModal(false)}>
               Cancelar
             </Button>
-            <Button onClick={fecharInscricoes} disabled={loading} className="bg-red-500 hover:bg-red-600 text-white">
-              {loading && <RefreshCw className="w-4 h-4 mr-2 animate-spin" />}
-              Confirmar Fechamento
+            <Button 
+              onClick={fecharInscricoes} 
+              disabled={loading} 
+              className="bg-red-500 hover:bg-red-600 text-white"
+            >
+              {loading ? (
+                <>
+                  <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                  Processando...
+                </>
+              ) : (
+                'Confirmar Fechamento'
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
