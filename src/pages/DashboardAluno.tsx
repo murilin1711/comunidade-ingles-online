@@ -9,9 +9,6 @@ import Logo from '@/components/Logo';
 import AvisarFaltaModal from '@/components/AvisarFaltaModal';
 import EstatisticasPresencaAluno from '@/components/EstatisticasPresencaAluno';
 import InscricoesDetalhes from '@/components/InscricoesDetalhes';
-import SecurityWrapper from '@/components/SecurityWrapper';
-import { useSecurity } from '@/hooks/useSecurity';
-import { useErrorHandler } from '@/hooks/useErrorHandler';
 
 interface Aula {
   id: string;
@@ -35,8 +32,6 @@ const DashboardAluno = () => {
   const [loading, setLoading] = useState(false);
   const [configuracoes, setConfiguracoes] = useState<any>(null);
   const { user, userData, logout } = useAuth();
-  const { canPerformCriticalAction } = useSecurity();
-  const { handleError, handleSuccess } = useErrorHandler();
 
   const diasSemana = [
     'Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'
@@ -65,109 +60,102 @@ const DashboardAluno = () => {
     }
   };
 
-  // Real-time updates otimizado - menos subscriptions
+  // Real-time updates para sincronização automática
   useEffect(() => {
     if (!user || userData?.role !== 'aluno') return;
 
-    let mounted = true;
-    
-    // Apenas uma subscription para mudanças críticas
     const channel = supabase
-      .channel(`dashboard-aluno-${user.id}`)
+      .channel('dashboard-aluno-realtime')
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
-          table: 'inscricoes',
-          filter: `aluno_id=eq.${user.id}`  // Filtrar apenas inscrições do usuário
+          table: 'inscricoes'
         },
         () => {
-          if (mounted) {
-            console.log('Minhas inscricoes changed, updating...');
-            fetchAulas();
-          }
+          console.log('Inscricoes changed, updating dashboard...');
+          fetchAulas();
         }
       )
-      .subscribe();
+       .on(
+         'postgres_changes',
+         {
+           event: '*',
+           schema: 'public',
+           table: 'aulas'
+         },
+         () => {
+           console.log('Aulas changed, updating dashboard...');
+           fetchAulas();
+         }
+       )
+       .on(
+         'postgres_changes',
+         {
+           event: '*',
+           schema: 'public',
+           table: 'configuracoes_sistema'
+         },
+         () => {
+           console.log('Configurações changed, updating dashboard...');
+           fetchConfiguracoes();
+         }
+       )
+       .subscribe();
 
     return () => {
-      mounted = false;
       supabase.removeChannel(channel);
     };
   }, [user, userData]);
 
   const fetchAulas = async () => {
-    if (!user) return;
-    
     try {
-      // Query otimizada: buscar aulas e inscrições em uma única consulta
+      // Buscar todas as aulas ativas
       const { data: aulasData, error: aulasError } = await supabase
         .from('aulas')
-        .select(`
-          *,
-          inscricoes!inner(
-            id,
-            status,
-            posicao_espera,
-            aluno_id,
-            cancelamento
-          )
-        `)
+        .select('*')
         .eq('ativa', true)
-        .eq('inscricoes.aluno_id', user.id)
-        .is('inscricoes.cancelamento', null)
         .order('dia_semana', { ascending: true })
         .order('horario', { ascending: true });
 
-      if (aulasError) {
-        // Se não há inscrições, buscar todas as aulas disponíveis
-        const { data: todasAulas, error: todasError } = await supabase
-          .from('aulas')
-          .select('*')
-          .eq('ativa', true)
-          .order('dia_semana', { ascending: true })
-          .order('horario', { ascending: true });
+      if (aulasError) throw aulasError;
 
-        if (todasError) throw todasError;
+      // Para cada aula, buscar o número de inscrições confirmadas e a inscrição do usuário atual
+      const aulasComInscricoes = await Promise.all(
+        (aulasData || []).map(async (aula) => {
+          // Contar inscrições confirmadas
+          const { count: inscricoesCount } = await supabase
+            .from('inscricoes')
+            .select('*', { count: 'exact' })
+            .eq('aula_id', aula.id)
+            .eq('status', 'confirmado')
+            .is('cancelamento', null);
 
-        // Para cada aula, buscar apenas o count de inscrições confirmadas
-        const aulasComCount = await Promise.all(
-          (todasAulas || []).map(async (aula) => {
-            const { count } = await supabase
-              .from('inscricoes')
-              .select('*', { count: 'exact' })
-              .eq('aula_id', aula.id)
-              .eq('status', 'confirmado')
-              .is('cancelamento', null);
+          // Buscar inscrição do usuário atual
+          const { data: minhaInscricao } = await supabase
+            .from('inscricoes')
+            .select('id, status, posicao_espera')
+            .eq('aula_id', aula.id)
+            .eq('aluno_id', user?.id)
+            .is('cancelamento', null)
+            .maybeSingle();
 
-            return {
-              ...aula,
-              inscricoes_count: count || 0,
-              minha_inscricao: undefined
-            };
-          })
-        );
-
-        setAulas(aulasComCount);
-        return;
-      }
-
-      // Processar aulas com inscrições do usuário
-      const aulasComInscricoes = aulasData?.map(aula => ({
-        ...aula,
-        inscricoes_count: 0, // Será atualizado abaixo
-        minha_inscricao: aula.inscricoes[0] ? {
-          id: aula.inscricoes[0].id,
-          status: aula.inscricoes[0].status as 'confirmado' | 'espera',
-          posicao_espera: aula.inscricoes[0].posicao_espera
-        } : undefined
-      })) || [];
+          return {
+            ...aula,
+            inscricoes_count: inscricoesCount || 0,
+            minha_inscricao: minhaInscricao ? {
+              ...minhaInscricao,
+              status: minhaInscricao.status as 'confirmado' | 'espera'
+            } : undefined
+          };
+        })
+      );
 
       setAulas(aulasComInscricoes);
     } catch (error) {
       console.error('Erro ao buscar aulas:', error);
-      handleError(error, 'Erro ao carregar aulas');
+      toast.error('Erro ao carregar aulas');
     }
   };
 
@@ -220,13 +208,8 @@ const DashboardAluno = () => {
   const handleInscricao = async (aulaId: string) => {
     if (!user || !userData) return;
 
-    // Verificação de segurança obrigatória
-    if (!canPerformCriticalAction()) {
-      return;
-    }
-
     if (isAlunoSuspenso()) {
-      handleError(new Error('student_suspended'), 'Tentativa de inscrição estando suspenso');
+      toast.error('Você está suspenso e não pode se inscrever em aulas');
       return;
     }
 
@@ -278,7 +261,7 @@ const DashboardAluno = () => {
 
       if (error) throw error;
 
-      handleSuccess(
+      toast.success(
         status === 'confirmado' 
           ? 'Inscrição confirmada!' 
           : 'Você foi adicionado à lista de espera!'
@@ -300,6 +283,8 @@ const DashboardAluno = () => {
       );
 
     } catch (error: any) {
+      console.error('Erro na inscrição:', error);
+      
       // Reverter UI em caso de erro
       setAulas(prevAulas => 
         prevAulas.map(a => 
@@ -313,7 +298,13 @@ const DashboardAluno = () => {
         )
       );
       
-      handleError(error, 'Erro ao fazer inscrição');
+      if (error.code === '23505') { // Unique constraint violation
+        toast.error('Você já está inscrito nesta aula');
+      } else if (error.message?.includes('já possui inscrição em aula nesta semana')) {
+        toast.error('Você já possui uma inscrição nesta semana. Apenas uma inscrição por semana é permitida.');
+      } else {
+        toast.error('Erro ao fazer inscrição. Tente novamente.');
+      }
     } finally {
       setLoading(false);
     }
@@ -321,11 +312,6 @@ const DashboardAluno = () => {
 
   const handleCancelarInscricao = async (aulaId: string) => {
     if (!user || !userData) return;
-
-    // Verificação de segurança obrigatória
-    if (!canPerformCriticalAction()) {
-      return;
-    }
 
     setLoading(true);
     try {
@@ -374,15 +360,16 @@ const DashboardAluno = () => {
         }
       }
 
-      handleSuccess(
+      toast.success(
         diferencaHoras < 4 
           ? 'Inscrição cancelada. Você foi suspenso por 1 semana por cancelar com menos de 4h de antecedência.' 
           : 'Inscrição cancelada com sucesso!'
       );
 
       await fetchAulas();
-    } catch (error: any) {
-      handleError(error, 'Erro ao cancelar inscrição');
+    } catch (error) {
+      console.error('Erro ao cancelar inscrição:', error);
+      toast.error('Erro ao cancelar inscrição. Tente novamente.');
     } finally {
       setLoading(false);
     }
@@ -429,9 +416,8 @@ const DashboardAluno = () => {
   const inscricaoAberta = isInscricaoAberta();
 
   return (
-    <SecurityWrapper requireSecureTime={true} requireNoDevTools={false}>
-      <div className="min-h-screen bg-gradient-to-br from-yellow-50 to-yellow-100 p-4">
-        <div className="max-w-4xl mx-auto">
+    <div className="min-h-screen bg-gradient-to-br from-yellow-50 to-yellow-100 p-4">
+      <div className="max-w-4xl mx-auto">
         <div className="flex justify-between items-center mb-6">
           <div className="flex items-center gap-4">
             <Logo size="md" />
@@ -616,9 +602,8 @@ const DashboardAluno = () => {
         <div className="mb-6">
           <EstatisticasPresencaAluno alunoId={user?.id || ''} />
         </div>
-        </div>
       </div>
-    </SecurityWrapper>
+    </div>
   );
 };
 

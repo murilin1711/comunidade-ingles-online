@@ -7,8 +7,6 @@ import { Label } from "@/components/ui/label";
 import { toast } from '@/components/ui/sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { AlertTriangle } from 'lucide-react';
-import { useSecurity } from '@/hooks/useSecurity';
-import { useErrorHandler } from '@/hooks/useErrorHandler';
 
 interface AvisarFaltaModalProps {
   aulaId: string;
@@ -21,17 +19,10 @@ const AvisarFaltaModal = ({ aulaId, alunoId, diaSemana, horario }: AvisarFaltaMo
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [motivo, setMotivo] = useState('');
-  const { canPerformCriticalAction } = useSecurity();
-  const { handleError, handleSuccess } = useErrorHandler();
 
   const handleAvisarFalta = async () => {
     if (!motivo.trim()) {
-      handleError(new Error('required_field'), 'Motivo da falta é obrigatório');
-      return;
-    }
-
-    // Verificação de segurança obrigatória
-    if (!canPerformCriticalAction()) {
+      toast.error('Por favor, escreva o motivo da falta.');
       return;
     }
 
@@ -75,15 +66,16 @@ const AvisarFaltaModal = ({ aulaId, alunoId, diaSemana, horario }: AvisarFaltaMo
         console.error('Erro ao promover lista de espera:', promoverError);
       }
 
-      handleSuccess('Aviso de falta enviado! Sua suspensão está sendo calculada por um administrador.');
+      toast.success('Aviso de falta enviado! Sua suspensão está sendo calculada por um administrador.');
       
       setOpen(false);
       setMotivo('');
       
       // Recarregar a página para atualizar as listas
       window.location.reload();
-    } catch (error: any) {
-      handleError(error, 'Erro ao avisar falta');
+    } catch (error) {
+      console.error('Erro ao avisar falta:', error);
+      toast.error('Erro ao avisar falta. Tente novamente.');
     } finally {
       setLoading(false);
     }
