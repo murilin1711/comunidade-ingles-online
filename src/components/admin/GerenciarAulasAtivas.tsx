@@ -101,7 +101,8 @@ const GerenciarAulasAtivas = ({ onEditarAula }: GerenciarAulasAtivasProps) => {
           *,
           inscricoes!inscricoes_aula_id_fkey(
             id,
-            status
+            status,
+            cancelamento
           )
         `)
         .order('data_aula', { ascending: false })
@@ -112,7 +113,7 @@ const GerenciarAulasAtivas = ({ onEditarAula }: GerenciarAulasAtivasProps) => {
       const aulasComContagem = data?.map(aula => ({
         ...aula,
         inscricoes_count: aula.inscricoes?.filter(i => 
-          i.status === 'confirmado' || i.status === 'espera'
+          (i.status === 'confirmado' || i.status === 'espera') && !i.cancelamento
         ).length || 0
       })) || [];
 

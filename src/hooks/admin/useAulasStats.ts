@@ -33,7 +33,15 @@ export const useAulasStats = () => {
             status,
             presenca,
             timestamp_inscricao,
+            cancelamento,
+            aluno_id,
             aluno:alunos!inscricoes_aluno_id_fkey(nome, matricula, email)
+          ),
+          avisos_falta!avisos_falta_aula_id_fkey(
+            id,
+            aluno_id,
+            aula_id,
+            status
           )
         `)
         .eq('ativa', true)
@@ -63,17 +71,20 @@ export const useAulasStats = () => {
       // Processar dados das aulas
       const aulasProcessadas = aulasData?.map(aula => {
         const inscricoes = aula.inscricoes || [];
-        const confirmados = inscricoes.filter(i => i.status === 'confirmado');
+        // Filtrar apenas inscrições não canceladas
+        const inscricoesAtivas = inscricoes.filter(i => i.cancelamento === null);
+        const confirmados = inscricoesAtivas.filter(i => i.status === 'confirmado');
         const presentes = confirmados.filter(i => i.presenca === true);
         const faltas = confirmados.filter(i => i.presenca === false);
-        const listaEspera = inscricoes.filter(i => i.status === 'espera');
+        const listaEspera = inscricoesAtivas.filter(i => i.status === 'espera');
 
         return {
           ...aula,
           confirmados,
           presentes,
           faltas,
-          listaEspera
+          listaEspera,
+          avisosFalta: aula.avisos_falta || []
         };
       }) || [];
 

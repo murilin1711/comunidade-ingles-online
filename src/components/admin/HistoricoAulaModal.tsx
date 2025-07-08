@@ -54,6 +54,12 @@ interface HistoricoAula {
   presentes?: Aluno[];
   faltas?: Aluno[];
   listaEspera?: Aluno[];
+  avisosFalta?: Array<{
+    id: string;
+    aluno_id: string;
+    aula_id: string;
+    status: string;
+  }>;
   status_alterado_por?: string;
   status_alterado_em?: string;
   status_alterado_por_tipo?: string;
@@ -371,21 +377,50 @@ const HistoricoAulaModal = ({ aula, open, onOpenChange, onAulaApagada }: Histori
                           {aluno.aluno?.email || 'N/A'}
                         </TableCell>
                         <TableCell>
-                          {aluno.presenca === null ? (
-                            <Badge variant="outline" className="border-gray-300 text-gray-600">
-                              Não marcado
-                            </Badge>
-                          ) : aluno.presenca ? (
-                            <Badge className="bg-green-500 text-white">
-                              <Check className="w-3 h-3 mr-1" />
-                              Presente
-                            </Badge>
-                          ) : (
-                            <Badge className="bg-red-500 text-white">
-                              <X className="w-3 h-3 mr-1" />
-                              Falta
-                            </Badge>
-                          )}
+                          {(() => {
+                            // Verificar se há aviso de falta para este aluno nesta aula
+                            const temAvisoFalta = aula.avisosFalta?.some(aviso => 
+                              aviso.aluno_id === aluno.aluno_id && aviso.aula_id === aula.id
+                            );
+
+                            if (aluno.presenca === null) {
+                              if (temAvisoFalta) {
+                                return (
+                                  <Badge className="bg-orange-500 text-white">
+                                    <X className="w-3 h-3 mr-1" />
+                                    Falta com Aviso
+                                  </Badge>
+                                );
+                              }
+                              return (
+                                <Badge variant="outline" className="border-gray-300 text-gray-600">
+                                  Não marcado
+                                </Badge>
+                              );
+                            } else if (aluno.presenca) {
+                              return (
+                                <Badge className="bg-green-500 text-white">
+                                  <Check className="w-3 h-3 mr-1" />
+                                  Presente
+                                </Badge>
+                              );
+                            } else {
+                              if (temAvisoFalta) {
+                                return (
+                                  <Badge className="bg-orange-500 text-white">
+                                    <X className="w-3 h-3 mr-1" />
+                                    Falta com Aviso
+                                  </Badge>
+                                );
+                              }
+                              return (
+                                <Badge className="bg-red-500 text-white">
+                                  <X className="w-3 h-3 mr-1" />
+                                  Falta sem Aviso
+                                </Badge>
+                              );
+                            }
+                          })()}
                         </TableCell>
                         <TableCell className="text-black text-sm">
                           {formatarTimestamp(aluno.timestamp_inscricao)}
