@@ -129,11 +129,11 @@ const GerenciarAulasAdmin = () => {
           horario,
           nivel,
           professor_nome,
-          inscricoes!inscricoes_aula_id_fkey(
+          inscricoes_aceitas:inscricoes!inscricoes_aula_id_fkey(
             id,
             status
           )
-        `).eq('ativa', true).not('data_aula', 'is', null) // Aulas que já foram liberadas
+        `).eq('ativa', true).not('data_aula', 'is', null) // Aulas que já foram liberadas e estão ativas
       .order('dia_semana').order('horario');
       if (error) throw error;
       const aulasComInscricoes = data?.map(aula => ({
@@ -142,7 +142,7 @@ const GerenciarAulasAdmin = () => {
         horario: aula.horario,
         nivel: aula.nivel,
         professor_nome: aula.professor_nome,
-        inscricoes_ativas: aula.inscricoes?.filter(i => i.status === 'confirmado' || i.status === 'espera').length || 0
+        inscricoes_ativas: aula.inscricoes_aceitas?.filter(i => i.status === 'confirmado' || i.status === 'espera').length || 0
       })) || [];
       setAulasParaFechar(aulasComInscricoes);
       setShowFecharModal(true);
