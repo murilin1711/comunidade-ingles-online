@@ -7,7 +7,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { toast } from '@/components/ui/sonner';
 import { supabase } from '@/integrations/supabase/client';
-import { Eye, Edit, Search } from 'lucide-react';
+import { Eye, Edit, Search, Trash2 } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -34,6 +45,7 @@ const GerenciarAulasAtivas = ({ onEditarAula }: GerenciarAulasAtivasProps) => {
   const [loading, setLoading] = useState(false);
   const [filtro, setFiltro] = useState('todas');
   const [busca, setBusca] = useState('');
+  const [aulaParaApagar, setAulaParaApagar] = useState<string | null>(null);
 
   const diasSemana = [
     'Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'
@@ -146,6 +158,37 @@ const GerenciarAulasAtivas = ({ onEditarAula }: GerenciarAulasAtivasProps) => {
       fetchAulas();
     } finally {
       setLoading(false);
+    }
+  };
+
+  const apagarAulaPermanentemente = async (aulaId: string) => {
+    try {
+      setLoading(true);
+
+      // Primeiro deletar todas as inscrições relacionadas
+      const { error: inscricoesError } = await supabase
+        .from('inscricoes')
+        .delete()
+        .eq('aula_id', aulaId);
+
+      if (inscricoesError) throw inscricoesError;
+
+      // Depois deletar a aula
+      const { error: aulaError } = await supabase
+        .from('aulas')
+        .delete()
+        .eq('id', aulaId);
+
+      if (aulaError) throw aulaError;
+
+      toast.success('Aula apagada permanentemente com sucesso!');
+      fetchAulas();
+    } catch (error: any) {
+      console.error('Erro ao apagar aula:', error);
+      toast.error(`Erro ao apagar aula: ${error.message}`);
+    } finally {
+      setLoading(false);
+      setAulaParaApagar(null);
     }
   };
 
@@ -303,6 +346,47 @@ const GerenciarAulasAtivas = ({ onEditarAula }: GerenciarAulasAtivasProps) => {
                       >
                         <Edit className="w-4 h-4" />
                       </Button>
+
+                      {/* Botão Apagar */}
+                      <AlertDialog open={aulaParaApagar === aula.id} onOpenChange={(open) => !open && setAulaParaApagar(null)}>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => setAulaParaApagar(aula.id)}
+                            disabled={loading}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Apagar Aula Permanentemente</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Tem certeza que deseja apagar permanentemente a aula de{' '}
+                              <strong>{diasSemana[aula.dia_semana]} às {aula.horario}</strong>?
+                              <br />
+                              <br />
+                              Esta ação não pode ser desfeita e irá remover:
+                              <br />
+                              • A aula e todas suas configurações
+                              <br />
+                              • Todas as inscrições dos alunos
+                              <br />
+                              • Histórico relacionado à esta aula
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => apagarAulaPermanentemente(aula.id)}
+                              className="bg-red-600 hover:bg-red-700"
+                            >
+                              Apagar Permanentemente
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     </div>
                   </div>
                 </CardContent>

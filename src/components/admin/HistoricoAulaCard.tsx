@@ -117,11 +117,12 @@ const HistoricoAulaCard = ({ aula }: HistoricoAulaCardProps) => {
         </CardContent>
       </Card>
 
-      <HistoricoAulaModal
-        aula={aula}
-        open={modalAberto}
-        onOpenChange={setModalAberto}
-      />
+        <HistoricoAulaModal
+          aula={aula}
+          open={modalAberto}
+          onOpenChange={setModalAberto}
+          onAulaApagada={() => window.location.reload()}
+        />
     </>
   );
 };

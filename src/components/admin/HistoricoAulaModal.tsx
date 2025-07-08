@@ -10,7 +10,20 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Search, Download, Users, Clock, Check, X } from 'lucide-react';
+import { Search, Download, Users, Clock, Check, X, Trash2 } from 'lucide-react';
+import { toast } from '@/components/ui/sonner';
+import { supabase } from '@/integrations/supabase/client';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -45,15 +58,18 @@ interface HistoricoAulaModalProps {
   aula: HistoricoAula;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onAulaApagada?: () => void;
 }
 
 const diasSemana = [
   'Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'
 ];
 
-const HistoricoAulaModal = ({ aula, open, onOpenChange }: HistoricoAulaModalProps) => {
+const HistoricoAulaModal = ({ aula, open, onOpenChange, onAulaApagada }: HistoricoAulaModalProps) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState('confirmados');
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const formatarTimestamp = (timestamp: string) => {
     const data = new Date(timestamp);
@@ -121,6 +137,38 @@ const HistoricoAulaModal = ({ aula, open, onOpenChange }: HistoricoAulaModalProp
     document.body.removeChild(link);
   };
 
+  const apagarAulaPermanentemente = async () => {
+    try {
+      setLoading(true);
+
+      // Primeiro deletar todas as inscrições relacionadas
+      const { error: inscricoesError } = await supabase
+        .from('inscricoes')
+        .delete()
+        .eq('aula_id', aula.id);
+
+      if (inscricoesError) throw inscricoesError;
+
+      // Depois deletar a aula
+      const { error: aulaError } = await supabase
+        .from('aulas')
+        .delete()
+        .eq('id', aula.id);
+
+      if (aulaError) throw aulaError;
+
+      toast.success('Aula apagada permanentemente com sucesso!');
+      onOpenChange(false);
+      if (onAulaApagada) onAulaApagada();
+    } catch (error: any) {
+      console.error('Erro ao apagar aula:', error);
+      toast.error(`Erro ao apagar aula: ${error.message}`);
+    } finally {
+      setLoading(false);
+      setShowDeleteDialog(false);
+    }
+  };
+
   const confirmados = filtrarAlunos(aula.confirmados || []);
   const listaEspera = filtrarAlunos(aula.listaEspera || []);
 
@@ -175,6 +223,45 @@ const HistoricoAulaModal = ({ aula, open, onOpenChange }: HistoricoAulaModalProp
               <Download className="w-4 h-4 mr-2" />
               Exportar CSV
             </Button>
+            
+            <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="destructive"
+                  disabled={loading}
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Apagar Aula
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Apagar Aula Permanentemente</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Tem certeza que deseja apagar permanentemente a aula de{' '}
+                    <strong>{diasSemana[aula.dia_semana]} às {aula.horario}</strong>?
+                    <br />
+                    <br />
+                    Esta ação não pode ser desfeita e irá remover:
+                    <br />
+                    • A aula e todas suas configurações
+                    <br />
+                    • Todas as inscrições dos alunos ({(aula.confirmados?.length || 0) + (aula.listaEspera?.length || 0)} inscrições)
+                    <br />
+                    • Histórico relacionado à esta aula
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={apagarAulaPermanentemente}
+                    className="bg-red-600 hover:bg-red-700"
+                  >
+                    Apagar Permanentemente
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
 
           <TabsContent value="confirmados">
