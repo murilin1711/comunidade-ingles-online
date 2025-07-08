@@ -15,6 +15,8 @@ interface HistoricoAula {
   professor_nome: string;
   data_aula?: string | null;
   capacidade: number;
+  ativa: boolean;
+  inscricoes_abertas: boolean;
   confirmados?: any[];
   presentes?: any[];
   faltas?: any[];

@@ -26,6 +26,8 @@ export const useAulasStats = () => {
           professor_nome,
           professor_id,
           data_aula,
+          ativa,
+          inscricoes_abertas,
           inscricoes!inscricoes_aula_id_fkey(
             id,
             status,

@@ -48,6 +48,8 @@ interface HistoricoAula {
   professor_nome: string;
   data_aula?: string | null;
   capacidade: number;
+  ativa: boolean;
+  inscricoes_abertas: boolean;
   confirmados?: Aluno[];
   presentes?: Aluno[];
   faltas?: Aluno[];
@@ -223,13 +225,25 @@ const HistoricoAulaModal = ({ aula, open, onOpenChange, onAulaApagada }: Histori
             <Users className="w-5 h-5" />
             {diasSemana[aula.dia_semana]} - {aula.horario} ({aula.nivel})
           </DialogTitle>
-          <div className="text-sm text-black/60">
-            Professor: {aula.professor_nome}
-            {aula.data_aula && (
-              <span className="ml-2">
-                • {format(new Date(aula.data_aula), 'dd/MM/yyyy', { locale: ptBR })}
-              </span>
-            )}
+          <div className="text-sm text-black/60 space-y-1">
+            <div>
+              Professor: {aula.professor_nome}
+              {aula.data_aula && (
+                <span className="ml-2">
+                  • {format(new Date(aula.data_aula), 'dd/MM/yyyy', { locale: ptBR })}
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-2 mt-2">
+              <Badge variant={aula.inscricoes_abertas ? "default" : "secondary"} 
+                     className={aula.inscricoes_abertas ? "bg-blue-500 text-white" : ""}>
+                {aula.inscricoes_abertas ? "Inscrições Abertas" : "Inscrições Fechadas"}
+              </Badge>
+              <Badge variant={aula.ativa ? "default" : "secondary"} 
+                     className={aula.ativa ? "bg-green-500 text-white" : ""}>
+                {aula.ativa ? "Aula Ativa" : "Aula Inativa"}
+              </Badge>
+            </div>
           </div>
         </DialogHeader>
 

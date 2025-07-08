@@ -18,6 +18,8 @@ export interface AulaHistorico {
   capacidade: number;
   professor_nome: string;
   data_aula?: string;
+  ativa: boolean;
+  inscricoes_abertas: boolean;
   confirmados?: {
     id: string;
     status: string;

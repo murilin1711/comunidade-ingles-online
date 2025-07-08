@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import EditarAulaModal from './EditarAulaModal';
 
 interface Aula {
   id: string;
@@ -32,12 +33,13 @@ interface Aula {
   nivel: string;
   data_aula: string | null;
   ativa: boolean;
+  inscricoes_abertas: boolean;
   capacidade: number;
   inscricoes_count?: number;
 }
 
 interface GerenciarAulasAtivasProps {
-  onEditarAula: (aula: Aula) => void;
+  onEditarAula?: (aula: Aula) => void;
 }
 
 const GerenciarAulasAtivas = ({ onEditarAula }: GerenciarAulasAtivasProps) => {
@@ -46,6 +48,8 @@ const GerenciarAulasAtivas = ({ onEditarAula }: GerenciarAulasAtivasProps) => {
   const [filtro, setFiltro] = useState('todas');
   const [busca, setBusca] = useState('');
   const [aulaParaApagar, setAulaParaApagar] = useState<string | null>(null);
+  const [aulaParaEditar, setAulaParaEditar] = useState<Aula | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
 
   const diasSemana = [
     'Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'
@@ -305,8 +309,12 @@ const GerenciarAulasAtivas = ({ onEditarAula }: GerenciarAulasAtivasProps) => {
                         <Badge variant="outline" className="border-black/30">
                           {aula.nivel}
                         </Badge>
-                        <Badge className="bg-yellow-500 text-black">
+                         <Badge className="bg-yellow-500 text-black">
                           {aula.inscricoes_count || 0}/{aula.capacidade} vagas
+                        </Badge>
+                        <Badge variant={aula.inscricoes_abertas ? "default" : "secondary"} 
+                               className={aula.inscricoes_abertas ? "bg-blue-500 text-white" : ""}>
+                          {aula.inscricoes_abertas ? "Inscrições Abertas" : "Inscrições Fechadas"}
                         </Badge>
                       </div>
                       
@@ -341,7 +349,10 @@ const GerenciarAulasAtivas = ({ onEditarAula }: GerenciarAulasAtivasProps) => {
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => onEditarAula(aula)}
+                        onClick={() => {
+                          setAulaParaEditar(aula);
+                          setShowEditModal(true);
+                        }}
                         className="border-black/30 text-black hover:bg-yellow-50"
                       >
                         <Edit className="w-4 h-4" />
@@ -395,6 +406,18 @@ const GerenciarAulasAtivas = ({ onEditarAula }: GerenciarAulasAtivasProps) => {
           })
         )}
       </div>
+
+      {/* Modal de Edição */}
+      <EditarAulaModal
+        open={showEditModal}
+        onOpenChange={setShowEditModal}
+        aula={aulaParaEditar}
+        onAulaEditada={() => {
+          fetchAulas();
+          setShowEditModal(false);
+          setAulaParaEditar(null);
+        }}
+      />
     </div>
   );
 };
