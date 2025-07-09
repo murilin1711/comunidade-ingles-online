@@ -2,6 +2,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { validatePassword, validateEmail, rateLimitTracker, logSecurityEvent } from '@/utils/security';
 
 interface UserData {
   matricula: string;
@@ -153,6 +154,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const signIn = async (email: string, password: string) => {
+    // Input validation
+    if (!validateEmail(email)) {
+      logSecurityEvent('INVALID_EMAIL_ATTEMPT', { email });
+      throw new Error('Email inválido');
+    }
+
+    // Rate limiting
+    const clientId = email; // In production, use IP address + email
+    if (rateLimitTracker.isRateLimited(clientId)) {
+      logSecurityEvent('RATE_LIMIT_EXCEEDED', { email });
+      throw new Error('Muitas tentativas de login. Tente novamente em 15 minutos.');
+    }
+
     console.log('Attempting sign in with:', email);
     const { error } = await supabase.auth.signInWithPassword({
       email,
@@ -161,12 +175,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     if (error) {
       console.error('Sign in error:', error);
+      logSecurityEvent('FAILED_LOGIN_ATTEMPT', { email, error: error.message });
       throw error;
+    } else {
+      // Reset rate limit on successful login
+      rateLimitTracker.reset(clientId);
+      logSecurityEvent('SUCCESSFUL_LOGIN', { email });
     }
   };
 
   const signUp = async (email: string, password: string, userInfo: Omit<UserData, 'statusSuspenso' | 'fimSuspensao'>) => {
     console.log('Attempting sign up with:', email, userInfo);
+    
+    // Input validation
+    if (!validateEmail(email)) {
+      logSecurityEvent('INVALID_EMAIL_SIGNUP', { email });
+      throw new Error('Email inválido');
+    }
+
+    // Password validation
+    const passwordValidation = validatePassword(password);
+    if (!passwordValidation.isValid) {
+      logSecurityEvent('WEAK_PASSWORD_ATTEMPT', { email, errors: passwordValidation.errors });
+      throw new Error(`Senha inválida: ${passwordValidation.errors.join(', ')}`);
+    }
     
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -178,7 +210,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     if (error) {
       console.error('Sign up error:', error);
+      logSecurityEvent('FAILED_SIGNUP_ATTEMPT', { email, error: error.message });
       throw error;
+    } else {
+      logSecurityEvent('SUCCESSFUL_SIGNUP', { email, role: userInfo.role });
     }
 
     if (data.user) {

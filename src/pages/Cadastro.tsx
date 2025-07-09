@@ -15,6 +15,7 @@ const Cadastro = () => {
     nome: '',
     email: '',
     telefone: '',
+    senha: '',
     tipoUsuario: 'aluno' as 'aluno' | 'professor' | 'admin'
   });
   const [loading, setLoading] = useState(false);
@@ -38,7 +39,7 @@ const Cadastro = () => {
   const handleCadastro = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.email || !formData.matricula || !formData.nome || !formData.telefone) {
+    if (!formData.email || !formData.matricula || !formData.nome || !formData.telefone || !formData.senha) {
       toast.error('Todos os campos são obrigatórios');
       return;
     }
@@ -48,8 +49,8 @@ const Cadastro = () => {
     try {
       console.log('Creating user with data:', formData);
       
-      // Use matrícula as password for Supabase Auth
-      await signUp(formData.email, formData.matricula, {
+      // Use secure password for Supabase Auth
+      await signUp(formData.email, formData.senha, {
         matricula: formData.matricula,
         nome: formData.nome,
         email: formData.email,
@@ -58,7 +59,7 @@ const Cadastro = () => {
       });
 
       toast.success(`Conta de ${formData.tipoUsuario} criada com sucesso!`);
-      toast.success(`Login: ${formData.email} | Senha: ${formData.matricula}`);
+      toast.success(`Login: ${formData.email} | Use a senha cadastrada`);
       
       // Note: The user will be automatically redirected by the App component
       // based on their role once authentication is complete
@@ -69,9 +70,9 @@ const Cadastro = () => {
       
       if (error.message?.includes('User already registered')) {
         errorMessage = 'Este email já está cadastrado';
-      } else if (error.message?.includes('Password should be at least 6 characters')) {
-        errorMessage = 'A matrícula deve ter pelo menos 6 caracteres';
-      } else if (error.message?.includes('Unable to validate email address')) {
+      } else if (error.message?.includes('Senha inválida')) {
+        errorMessage = error.message;
+      } else if (error.message?.includes('Email inválido')) {
         errorMessage = 'Email inválido';
       } else if (error.message?.includes('duplicate key value violates unique constraint')) {
         if (error.message.includes('matricula')) {
@@ -181,11 +182,32 @@ const Cadastro = () => {
                 required
               />
             </div>
+
+            <div>
+              <Label htmlFor="senha" className="text-black">Senha</Label>
+              <Input
+                id="senha"
+                name="senha"
+                type="password"
+                value={formData.senha}
+                onChange={handleChange}
+                placeholder="Digite uma senha segura"
+                className="border-black/20 focus:border-yellow-500 focus:ring-yellow-500"
+                required
+              />
+            </div>
             
             <div className="mt-4 p-3 bg-yellow-100 border border-black/20 rounded-md">
-              <p className="text-xs text-black/80">
-                <strong>Informação:</strong> A senha para login será a matrícula/ID informada acima.
+              <p className="text-xs text-black/80 mb-2">
+                <strong>Informação:</strong> O sistema agora usa senhas seguras. A senha deve conter:
               </p>
+              <ul className="text-xs text-black/70 list-disc list-inside space-y-1">
+                <li>Pelo menos 8 caracteres</li>
+                <li>Uma letra maiúscula</li>
+                <li>Uma letra minúscula</li>
+                <li>Um número</li>
+                <li>Um caractere especial (!@#$%^&*)</li>
+              </ul>
             </div>
             
             <Button 

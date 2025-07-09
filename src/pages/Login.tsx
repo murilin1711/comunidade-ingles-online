@@ -36,10 +36,10 @@ const Login = () => {
     } catch (error: any) {
       console.error('Erro no login:', error);
       
-      let errorMessage = 'Email ou matrícula incorretos';
+      let errorMessage = 'Email ou senha incorretos';
       
       if (error.message?.includes('Invalid login credentials')) {
-        errorMessage = 'Email ou matrícula incorretos';
+        errorMessage = 'Email ou senha incorretos';
       } else if (error.message?.includes('Email not confirmed')) {
         errorMessage = 'Confirme seu email antes de fazer login';
       } else if (error.message?.includes('Too many requests')) {
@@ -59,7 +59,7 @@ const Login = () => {
           <Logo size="lg" className="mb-4" />
           <CardTitle className="text-2xl text-black">Login</CardTitle>
           <CardDescription className="text-black/70">
-            Entre com seu email e matrícula
+            Entre com seu email e senha
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -78,14 +78,14 @@ const Login = () => {
               />
             </div>
             <div>
-              <Label htmlFor="matricula" className="text-black">Matrícula/Senha</Label>
+              <Label htmlFor="matricula" className="text-black">Senha</Label>
               <Input
                 id="matricula"
                 name="matricula"
                 type="password"
                 value={formData.matricula}
                 onChange={handleChange}
-                placeholder="Digite sua matrícula"
+                placeholder="Digite sua senha"
                 className="border-black/20 focus:border-yellow-500 focus:ring-yellow-500"
                 required
               />

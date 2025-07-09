@@ -1,35 +1,33 @@
-
 import React, { useState, useEffect } from 'react';
-import { collection, query, orderBy, onSnapshot, addDoc, deleteDoc, doc } from 'firebase/firestore';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { db } from '@/lib/firebase';
+import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/components/ui/sonner';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Clock, Plus, Trash2, Calendar } from 'lucide-react';
 
-interface AgendamentoConfig {
+interface ConfiguracaoSistema {
   id: string;
-  diaSemana: number; // 0 = Domingo, 1 = Segunda, etc.
-  horario: string;
-  ativo: boolean;
-  criadoEm: any;
+  dia_liberacao: number;
+  horario_liberacao: string;
+  criado_em: string;
+  atualizado_em: string;
 }
 
 const AgendamentoAulas = () => {
-  const [agendamentos, setAgendamentos] = useState<AgendamentoConfig[]>([]);
-  const [novoAgendamento, setNovoAgendamento] = useState({
-    diaSemana: 1, // Segunda-feira
-    horario: '12:30'
+  const [configuracoes, setConfiguracoes] = useState<ConfiguracaoSistema[]>([]);
+  const [novaConfiguracao, setNovaConfiguracao] = useState({
+    dia_liberacao: 1, // Segunda-feira
+    horario_liberacao: '12:30'
   });
   const [loading, setLoading] = useState(false);
-  const { user, logout } = useAuth();
+  const { user, logout, userData } = useAuth();
 
   const diasSemana = [
     { value: 0, label: 'Domingo' },
@@ -42,76 +40,95 @@ const AgendamentoAulas = () => {
   ];
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || userData?.role !== 'admin') return;
 
-    // Escutar agendamentos em tempo real
-    const q = query(collection(db, 'agendamentos'), orderBy('criadoEm', 'desc'));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const agendamentosData = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      } as AgendamentoConfig));
-      setAgendamentos(agendamentosData);
-    });
+    fetchConfiguracoes();
 
-    return () => unsubscribe();
-  }, [user]);
-
-  useEffect(() => {
-    // Criar agendamento padrão se não existir
-    const criarAgendamentoPadrao = async () => {
-      if (agendamentos.length === 0 && user) {
-        try {
-          await addDoc(collection(db, 'agendamentos'), {
-            diaSemana: 1, // Segunda-feira
-            horario: '12:30',
-            ativo: true,
-            criadoEm: new Date()
-          });
-          toast.success('Agendamento padrão criado: Segunda-feira às 12:30');
-        } catch (error) {
-          console.error('Erro ao criar agendamento padrão:', error);
+    // Real-time updates
+    const channel = supabase
+      .channel('configuracoes-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'configuracoes_sistema'
+        },
+        () => {
+          fetchConfiguracoes();
         }
-      }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
     };
+  }, [user, userData]);
 
-    criarAgendamentoPadrao();
-  }, [agendamentos, user]);
+  const fetchConfiguracoes = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('configuracoes_sistema')
+        .select('*')
+        .order('criado_em', { ascending: false });
 
-  const handleAdicionarAgendamento = async () => {
-    if (!user) return;
+      if (error) throw error;
+      setConfiguracoes(data || []);
+    } catch (error) {
+      console.error('Erro ao buscar configurações:', error);
+      toast.error('Erro ao carregar configurações');
+    }
+  };
+
+  const handleAdicionarConfiguracao = async () => {
+    if (!user || userData?.role !== 'admin') {
+      toast.error('Acesso negado');
+      return;
+    }
 
     setLoading(true);
     try {
-      await addDoc(collection(db, 'agendamentos'), {
-        diaSemana: novoAgendamento.diaSemana,
-        horario: novoAgendamento.horario,
-        ativo: true,
-        criadoEm: new Date()
+      const { error } = await supabase
+        .from('configuracoes_sistema')
+        .insert({
+          dia_liberacao: novaConfiguracao.dia_liberacao,
+          horario_liberacao: novaConfiguracao.horario_liberacao
+        });
+
+      if (error) throw error;
+
+      setNovaConfiguracao({
+        dia_liberacao: 1,
+        horario_liberacao: '12:30'
       });
 
-      setNovoAgendamento({
-        diaSemana: 1,
-        horario: '12:30'
-      });
-
-      toast.success('Agendamento adicionado com sucesso!');
+      toast.success('Configuração adicionada com sucesso!');
     } catch (error) {
-      console.error('Erro ao adicionar agendamento:', error);
-      toast.error('Erro ao adicionar agendamento');
+      console.error('Erro ao adicionar configuração:', error);
+      toast.error('Erro ao adicionar configuração');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleRemoverAgendamento = async (id: string) => {
+  const handleRemoverConfiguracao = async (id: string) => {
+    if (!user || userData?.role !== 'admin') {
+      toast.error('Acesso negado');
+      return;
+    }
+
     setLoading(true);
     try {
-      await deleteDoc(doc(db, 'agendamentos', id));
-      toast.success('Agendamento removido!');
+      const { error } = await supabase
+        .from('configuracoes_sistema')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+      toast.success('Configuração removida!');
     } catch (error) {
-      console.error('Erro ao remover agendamento:', error);
-      toast.error('Erro ao remover agendamento');
+      console.error('Erro ao remover configuração:', error);
+      toast.error('Erro ao remover configuração');
     } finally {
       setLoading(false);
     }
@@ -121,34 +138,49 @@ const AgendamentoAulas = () => {
     return diasSemana.find(d => d.value === dia)?.label || 'Desconhecido';
   };
 
+  // Check if user is admin
+  if (!userData || userData.role !== 'admin') {
+    return (
+      <div className="min-h-screen bg-gray-50 p-4 flex items-center justify-center">
+        <Card className="max-w-md">
+          <CardContent className="p-6 text-center">
+            <h2 className="text-xl font-semibold mb-2">Acesso Negado</h2>
+            <p className="text-gray-600 mb-4">Esta página é restrita para administradores.</p>
+            <Button onClick={logout}>Voltar ao Login</Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 p-4">
       <div className="max-w-4xl mx-auto">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
             <Calendar className="h-8 w-8" />
-            Agendamento de Aulas
+            Configurações do Sistema
           </h1>
           <Button onClick={logout} variant="outline">
             Sair
           </Button>
         </div>
 
-        {/* Formulário para novo agendamento */}
+        {/* Formulário para nova configuração */}
         <Card className="mb-6">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Plus className="h-5 w-5" />
-              Novo Agendamento Automático
+              Nova Configuração de Liberação
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid md:grid-cols-3 gap-4">
               <div>
-                <Label htmlFor="diaSemana">Dia da Semana</Label>
+                <Label htmlFor="dia_liberacao">Dia da Liberação</Label>
                 <Select 
-                  value={novoAgendamento.diaSemana.toString()} 
-                  onValueChange={(value) => setNovoAgendamento(prev => ({ ...prev, diaSemana: parseInt(value) }))}
+                  value={novaConfiguracao.dia_liberacao.toString()} 
+                  onValueChange={(value) => setNovaConfiguracao(prev => ({ ...prev, dia_liberacao: parseInt(value) }))}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione o dia" />
@@ -163,61 +195,61 @@ const AgendamentoAulas = () => {
                 </Select>
               </div>
               <div>
-                <Label htmlFor="horario">Horário</Label>
+                <Label htmlFor="horario_liberacao">Horário da Liberação</Label>
                 <Input
-                  id="horario"
+                  id="horario_liberacao"
                   type="time"
-                  value={novoAgendamento.horario}
-                  onChange={(e) => setNovoAgendamento(prev => ({ ...prev, horario: e.target.value }))}
+                  value={novaConfiguracao.horario_liberacao}
+                  onChange={(e) => setNovaConfiguracao(prev => ({ ...prev, horario_liberacao: e.target.value }))}
                 />
               </div>
               <div className="flex items-end">
                 <Button 
-                  onClick={handleAdicionarAgendamento}
+                  onClick={handleAdicionarConfiguracao}
                   disabled={loading}
                   className="w-full"
                 >
-                  Adicionar Agendamento
+                  Adicionar Configuração
                 </Button>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Lista de agendamentos ativos */}
+        {/* Lista de configurações */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Clock className="h-5 w-5" />
-              Agendamentos Configurados
+              Configurações Ativas
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {agendamentos.length === 0 ? (
+            {configuracoes.length === 0 ? (
               <p className="text-gray-500 text-center py-4">
-                Nenhum agendamento configurado
+                Nenhuma configuração cadastrada
               </p>
             ) : (
               <div className="space-y-3">
-                {agendamentos.map((agendamento) => (
-                  <div key={agendamento.id} className="flex items-center justify-between p-4 border rounded-lg">
+                {configuracoes.map((config) => (
+                  <div key={config.id} className="flex items-center justify-between p-4 border rounded-lg">
                     <div className="flex items-center gap-4">
                       <div>
                         <p className="font-medium">
-                          {getDiaSemanaLabel(agendamento.diaSemana)} às {agendamento.horario}
+                          Liberação: {getDiaSemanaLabel(config.dia_liberacao)} às {config.horario_liberacao}
                         </p>
                         <p className="text-sm text-gray-600">
-                          Criado em: {agendamento.criadoEm && format(agendamento.criadoEm.toDate(), 'dd/MM/yyyy HH:mm', { locale: ptBR })}
+                          Criado em: {format(new Date(config.criado_em), 'dd/MM/yyyy HH:mm', { locale: ptBR })}
                         </p>
                       </div>
-                      <Badge variant={agendamento.ativo ? "default" : "secondary"}>
-                        {agendamento.ativo ? "Ativo" : "Inativo"}
+                      <Badge variant="default">
+                        Ativa
                       </Badge>
                     </div>
                     <Button
                       variant="destructive"
                       size="sm"
-                      onClick={() => handleRemoverAgendamento(agendamento.id)}
+                      onClick={() => handleRemoverConfiguracao(config.id)}
                       disabled={loading}
                     >
                       <Trash2 className="h-4 w-4" />
@@ -236,11 +268,11 @@ const AgendamentoAulas = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-2 text-sm text-gray-600">
-              <p>• Os agendamentos configurados aqui irão automaticamente liberar as inscrições para as aulas nos horários definidos</p>
-              <p>• O sistema verifica a cada minuto se há agendamentos para executar</p>
+              <p>• As configurações definem quando as inscrições para aulas serão abertas automaticamente</p>
+              <p>• O sistema verifica automaticamente nos horários configurados</p>
               <p>• Por padrão, as aulas são liberadas toda segunda-feira às 12:30</p>
               <p>• Você pode configurar múltiplos horários de liberação</p>
-              <p>• As notificações automáticas serão enviadas aos alunos quando as inscrições forem liberadas</p>
+              <p>• As notificações serão enviadas aos alunos quando as inscrições forem abertas</p>
             </div>
           </CardContent>
         </Card>
