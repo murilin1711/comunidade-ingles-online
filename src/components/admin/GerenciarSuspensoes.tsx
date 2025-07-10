@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
@@ -133,11 +134,27 @@ const GerenciarSuspensoes = () => {
       // Buscar detalhes do aviso
       const { data: avisoData, error: avisoError } = await supabase
         .from('avisos_falta')
-        .select('aluno_id')
+        .select('aluno_id, aula_id')
         .eq('id', avisoId)
         .single();
 
       if (avisoError) throw avisoError;
+
+      // Primeiro, cancelar a inscrição do aluno na aula específica
+      const { error: cancelError } = await supabase
+        .from('inscricoes')
+        .update({
+          cancelamento: new Date().toISOString(),
+          motivo_cancelamento: 'Aviso de falta - Suspensão aplicada'
+        })
+        .eq('aluno_id', avisoData.aluno_id)
+        .eq('aula_id', avisoData.aula_id)
+        .is('cancelamento', null);
+
+      if (cancelError) {
+        console.error('Erro ao cancelar inscrição:', cancelError);
+        // Continue mesmo se não conseguir cancelar a inscrição
+      }
 
       // Aplicar suspensão usando a função do banco
       const { error: suspensaoError } = await supabase.rpc(
@@ -164,7 +181,7 @@ const GerenciarSuspensoes = () => {
 
       if (updateError) throw updateError;
 
-      toast.success('Suspensão aplicada com sucesso!');
+      toast.success('Suspensão aplicada com sucesso! O aluno foi removido da lista e suspenso.');
       fetchData();
     } catch (error) {
       console.error('Erro ao aplicar suspensão:', error);
@@ -190,7 +207,10 @@ const GerenciarSuspensoes = () => {
       // Desativar suspensão
       const { error: updateSuspensaoError } = await supabase
         .from('suspensoes')
-        .update({ ativa: false })
+        .update({ 
+          ativa: false,
+          data_fim: new Date().toISOString() // Finalizar a suspensão imediatamente
+        })
         .eq('id', suspensaoId);
 
       if (updateSuspensaoError) throw updateSuspensaoError;
@@ -223,16 +243,24 @@ const GerenciarSuspensoes = () => {
       // Buscar dados da suspensão
       const { data: suspensaoData, error: selectError } = await supabase
         .from('suspensoes')
-        .select('aluno_id')
+        .select('aluno_id, data_inicio')
         .eq('id', suspensaoId)
         .single();
 
       if (selectError) throw selectError;
 
-      // Atualizar data fim da suspensão
+      // Calcular nova duração em semanas
+      const dataInicio = new Date(suspensaoData.data_inicio);
+      const diffTime = novaDataFim.getTime() - dataInicio.getTime();
+      const novasSemanas = Math.ceil(diffTime / (1000 * 60 * 60 * 24 * 7));
+
+      // Atualizar suspensão
       const { error: updateSuspensaoError } = await supabase
         .from('suspensoes')
-        .update({ data_fim: novaDataFim.toISOString() })
+        .update({ 
+          data_fim: novaDataFim.toISOString(),
+          semanas: novasSemanas
+        })
         .eq('id', suspensaoId);
 
       if (updateSuspensaoError) throw updateSuspensaoError;
@@ -240,7 +268,10 @@ const GerenciarSuspensoes = () => {
       // Atualizar data fim no registro do aluno
       const { error: updateAlunoError } = await supabase
         .from('alunos')
-        .update({ fim_suspensao: novaDataFim.toISOString() })
+        .update({ 
+          fim_suspensao: novaDataFim.toISOString(),
+          status_suspenso: novaDataFim > new Date() // Verificar se ainda está suspenso
+        })
         .eq('user_id', suspensaoData.aluno_id);
 
       if (updateAlunoError) throw updateAlunoError;

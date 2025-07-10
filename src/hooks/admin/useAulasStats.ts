@@ -1,3 +1,4 @@
+
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/sonner';
@@ -34,6 +35,7 @@ export const useAulasStats = () => {
             presenca,
             timestamp_inscricao,
             cancelamento,
+            motivo_cancelamento,
             aluno_id,
             aluno:alunos!inscricoes_aluno_id_fkey(nome, matricula, email)
           ),
@@ -41,7 +43,8 @@ export const useAulasStats = () => {
             id,
             aluno_id,
             aula_id,
-            status
+            status,
+            motivo
           )
         `)
         .eq('ativa', true)
@@ -71,12 +74,22 @@ export const useAulasStats = () => {
       // Processar dados das aulas
       const aulasProcessadas = aulasData?.map(aula => {
         const inscricoes = aula.inscricoes || [];
-        // Filtrar apenas inscrições não canceladas
+        const avisosFalta = aula.avisos_falta || [];
+        
+        // Separar inscrições ativas das canceladas
         const inscricoesAtivas = inscricoes.filter(i => i.cancelamento === null);
+        const inscricoesCanceladas = inscricoes.filter(i => i.cancelamento !== null);
+        
+        // Filtrar confirmados das inscrições ativas
         const confirmados = inscricoesAtivas.filter(i => i.status === 'confirmado');
         const presentes = confirmados.filter(i => i.presenca === true);
         const faltas = confirmados.filter(i => i.presenca === false);
         const listaEspera = inscricoesAtivas.filter(i => i.status === 'espera');
+        
+        // Identificar faltas com aviso (inscrições canceladas por aviso de falta)
+        const faltasComAviso = inscricoesCanceladas.filter(i => 
+          i.motivo_cancelamento?.includes('Aviso de falta')
+        );
 
         return {
           ...aula,
@@ -84,31 +97,33 @@ export const useAulasStats = () => {
           presentes,
           faltas,
           listaEspera,
-          avisosFalta: aula.avisos_falta || []
+          avisosFalta,
+          faltasComAviso: faltasComAviso.length
         };
       }) || [];
 
       setHistoricoAulas(aulasProcessadas);
 
-      // Buscar dados de avisos de falta para calcular estatísticas mais precisas
-      const { data: avisosFaltaData } = await supabase
-        .from('avisos_falta')
-        .select('id, aluno_id, aula_id, status')
-        .in('aula_id', aulasProcessadas.map(aula => aula.id));
-
-      // Calcular estatísticas de presença
+      // Calcular estatísticas de presença mais precisas
       const totalConfirmados = aulasProcessadas.reduce((acc, aula) => acc + (aula.confirmados?.length || 0), 0);
       const totalPresentes = aulasProcessadas.reduce((acc, aula) => acc + (aula.presentes?.length || 0), 0);
       const totalFaltas = aulasProcessadas.reduce((acc, aula) => acc + (aula.faltas?.length || 0), 0);
+      const totalFaltasComAviso = aulasProcessadas.reduce((acc, aula) => acc + (aula.faltasComAviso || 0), 0);
       
-      // Contar avisos de falta reais
-      const faltasComAvisoCount = avisosFaltaData?.length || 0;
-      const faltasSemAvisoCount = Math.max(0, totalFaltas - faltasComAvisoCount);
+      // Contar avisos de falta processados
+      const { data: avisosFaltaData } = await supabase
+        .from('avisos_falta')
+        .select('id, status')
+        .in('aula_id', aulasProcessadas.map(aula => aula.id))
+        .eq('status', 'aplicado');
+
+      const faltasComAvisoProcessadas = (avisosFaltaData?.length || 0) + totalFaltasComAviso;
+      const faltasSemAvisoCount = Math.max(0, totalFaltas - faltasComAvisoProcessadas);
 
       setEstatisticasPresenca({
         taxaPresenca: totalConfirmados > 0 ? Math.round((totalPresentes / totalConfirmados) * 100) : 0,
         faltasSemAviso: faltasSemAvisoCount,
-        faltasComAviso: faltasComAvisoCount
+        faltasComAviso: faltasComAvisoProcessadas
       });
 
     } catch (error) {
