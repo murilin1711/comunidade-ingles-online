@@ -222,6 +222,57 @@ const HistoricoAulaModal = ({ aula, open, onOpenChange, onAulaApagada }: Histori
 
   const confirmados = filtrarAlunos(aula.confirmados || []);
   const listaEspera = filtrarAlunos(aula.listaEspera || []);
+  
+  // Buscar dados dos avisos de falta com informações do aluno
+  const [avisosFaltaComAluno, setAvisosFaltaComAluno] = useState<Array<{
+    id: string;
+    aluno_id: string;
+    data_aviso: string;
+    status: string;
+    motivo?: string;
+    aluno?: {
+      nome: string;
+      matricula: string;
+      email: string;
+    };
+  }>>([]);
+
+  React.useEffect(() => {
+    const buscarAvisosFalta = async () => {
+      if (!aula.avisosFalta || aula.avisosFalta.length === 0) {
+        setAvisosFaltaComAluno([]);
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from('avisos_falta')
+          .select(`
+            id,
+            aluno_id,
+            data_aviso,
+            status,
+            motivo,
+            aluno:alunos!avisos_falta_aluno_id_fkey(
+              nome,
+              matricula,
+              email
+            )
+          `)
+          .eq('aula_id', aula.id)
+          .order('data_aviso', { ascending: false });
+
+        if (error) throw error;
+        setAvisosFaltaComAluno(data || []);
+      } catch (error) {
+        console.error('Erro ao buscar avisos de falta:', error);
+      }
+    };
+
+    if (open) {
+      buscarAvisosFalta();
+    }
+  }, [aula.id, aula.avisosFalta, open]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -254,7 +305,7 @@ const HistoricoAulaModal = ({ aula, open, onOpenChange, onAulaApagada }: Histori
         </DialogHeader>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList className="grid w-full grid-cols-2 bg-white/50 border border-black/20">
+          <TabsList className="grid w-full grid-cols-3 bg-white/50 border border-black/20">
             <TabsTrigger value="confirmados" className="flex items-center gap-2">
               <Check className="w-4 h-4" />
               Confirmados ({confirmados.length})
@@ -262,6 +313,10 @@ const HistoricoAulaModal = ({ aula, open, onOpenChange, onAulaApagada }: Histori
             <TabsTrigger value="lista-espera" className="flex items-center gap-2">
               <Clock className="w-4 h-4" />
               Lista de Espera ({listaEspera.length})
+            </TabsTrigger>
+            <TabsTrigger value="faltas" className="flex items-center gap-2">
+              <X className="w-4 h-4" />
+              Faltas ({(aula.avisosFalta || []).length})
             </TabsTrigger>
           </TabsList>
 
@@ -278,7 +333,14 @@ const HistoricoAulaModal = ({ aula, open, onOpenChange, onAulaApagada }: Histori
             <Button
               variant="outline"
               onClick={() => exportarCSV(
-                activeTab === 'confirmados' ? confirmados : listaEspera,
+                activeTab === 'confirmados' ? confirmados : 
+                activeTab === 'lista-espera' ? listaEspera : 
+                (aula.avisosFalta || []).map(aviso => ({
+                  id: aviso.id,
+                  aluno_id: aviso.aluno_id,
+                  timestamp_inscricao: '',
+                  aluno: { nome: 'Aviso de Falta', matricula: '', email: '' }
+                })),
                 activeTab
               )}
               className="border-black/30 text-black hover:bg-yellow-50"
@@ -474,6 +536,73 @@ const HistoricoAulaModal = ({ aula, open, onOpenChange, onAulaApagada }: Histori
                         </TableCell>
                       </TableRow>
                     ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="faltas">
+            <div className="border border-black/20 rounded-lg overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-gray-50">
+                    <TableHead className="text-black font-medium">Matrícula</TableHead>
+                    <TableHead className="text-black font-medium">Nome Completo</TableHead>
+                    <TableHead className="text-black font-medium">E-mail</TableHead>
+                    <TableHead className="text-black font-medium">Status</TableHead>
+                    <TableHead className="text-black font-medium">Data do Aviso</TableHead>
+                    <TableHead className="text-black font-medium">Motivo</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {avisosFaltaComAluno.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center py-8 text-black/60">
+                        {searchTerm ? 'Nenhum resultado encontrado' : 'Nenhum aviso de falta para esta aula'}
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    avisosFaltaComAluno
+                      .filter(aviso => {
+                        if (!searchTerm) return true;
+                        return aviso.aluno?.nome?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                               aviso.aluno?.matricula?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                               aviso.aluno?.email?.toLowerCase().includes(searchTerm.toLowerCase());
+                      })
+                      .map((aviso) => (
+                        <TableRow key={aviso.id}>
+                          <TableCell className="font-medium text-black">
+                            {aviso.aluno?.matricula || 'N/A'}
+                          </TableCell>
+                          <TableCell className="text-black">
+                            {aviso.aluno?.nome || 'Nome não disponível'}
+                          </TableCell>
+                          <TableCell className="text-black">
+                            {aviso.aluno?.email || 'N/A'}
+                          </TableCell>
+                          <TableCell>
+                            <Badge 
+                              className={
+                                aviso.status === 'pendente' ? 'bg-orange-500 text-white' : 
+                                aviso.status === 'aplicado' ? 'bg-red-500 text-white' : 
+                                'bg-gray-500 text-white'
+                              }
+                            >
+                              <X className="w-3 h-3 mr-1" />
+                              {aviso.status === 'pendente' ? 'Pendente' : 
+                               aviso.status === 'aplicado' ? 'Suspensão Aplicada' : 
+                               aviso.status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-black text-sm">
+                            {format(new Date(aviso.data_aviso), 'dd/MM/yyyy HH:mm', { locale: ptBR })}
+                          </TableCell>
+                          <TableCell className="text-black text-sm">
+                            {aviso.motivo || 'Sem motivo especificado'}
+                          </TableCell>
+                        </TableRow>
+                      ))
                   )}
                 </TableBody>
               </Table>

@@ -204,7 +204,19 @@ const GerenciarSuspensoes = () => {
 
       if (selectError) throw selectError;
 
-      // Desativar suspensão
+      // Primeiro atualizar status do aluno
+      const { error: updateAlunoError } = await supabase
+        .from('alunos')
+        .update({
+          status_suspenso: false,
+          fim_suspensao: null,
+          atualizado_em: new Date().toISOString()
+        })
+        .eq('user_id', suspensaoData.aluno_id);
+
+      if (updateAlunoError) throw updateAlunoError;
+
+      // Depois desativar suspensão
       const { error: updateSuspensaoError } = await supabase
         .from('suspensoes')
         .update({ 
@@ -214,17 +226,6 @@ const GerenciarSuspensoes = () => {
         .eq('id', suspensaoId);
 
       if (updateSuspensaoError) throw updateSuspensaoError;
-
-      // Atualizar status do aluno
-      const { error: updateAlunoError } = await supabase
-        .from('alunos')
-        .update({
-          status_suspenso: false,
-          fim_suspensao: null
-        })
-        .eq('user_id', suspensaoData.aluno_id);
-
-      if (updateAlunoError) throw updateAlunoError;
 
       toast.success('Suspensão cancelada com sucesso!');
       fetchData();
@@ -254,27 +255,33 @@ const GerenciarSuspensoes = () => {
       const diffTime = novaDataFim.getTime() - dataInicio.getTime();
       const novasSemanas = Math.ceil(diffTime / (1000 * 60 * 60 * 24 * 7));
 
-      // Atualizar suspensão
-      const { error: updateSuspensaoError } = await supabase
-        .from('suspensoes')
-        .update({ 
-          data_fim: novaDataFim.toISOString(),
-          semanas: novasSemanas
-        })
-        .eq('id', suspensaoId);
+      // Verificar se ainda está suspenso baseado na nova data
+      const agora = new Date();
+      const aindaSuspenso = novaDataFim > agora;
 
-      if (updateSuspensaoError) throw updateSuspensaoError;
-
-      // Atualizar data fim no registro do aluno
+      // Primeiro atualizar dados do aluno
       const { error: updateAlunoError } = await supabase
         .from('alunos')
         .update({ 
-          fim_suspensao: novaDataFim.toISOString(),
-          status_suspenso: novaDataFim > new Date() // Verificar se ainda está suspenso
+          fim_suspensao: aindaSuspenso ? novaDataFim.toISOString() : null,
+          status_suspenso: aindaSuspenso,
+          atualizado_em: new Date().toISOString()
         })
         .eq('user_id', suspensaoData.aluno_id);
 
       if (updateAlunoError) throw updateAlunoError;
+
+      // Depois atualizar suspensão
+      const { error: updateSuspensaoError } = await supabase
+        .from('suspensoes')
+        .update({ 
+          data_fim: novaDataFim.toISOString(),
+          semanas: novasSemanas,
+          ativa: aindaSuspenso
+        })
+        .eq('id', suspensaoId);
+
+      if (updateSuspensaoError) throw updateSuspensaoError;
 
       toast.success('Período da suspensão atualizado com sucesso!');
       fetchData();
