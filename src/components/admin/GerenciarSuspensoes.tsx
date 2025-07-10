@@ -202,9 +202,26 @@ const GerenciarSuspensoes = () => {
         .eq('id', suspensaoId)
         .single();
 
-      if (selectError) throw selectError;
+      if (selectError) {
+        console.error('Erro ao buscar suspensão:', selectError);
+        throw new Error(`Erro ao buscar suspensão: ${selectError.message}`);
+      }
 
-      // Primeiro atualizar status do aluno
+      // Desativar suspensão primeiro
+      const { error: updateSuspensaoError } = await supabase
+        .from('suspensoes')
+        .update({ 
+          ativa: false,
+          data_fim: new Date().toISOString()
+        })
+        .eq('id', suspensaoId);
+
+      if (updateSuspensaoError) {
+        console.error('Erro ao desativar suspensão:', updateSuspensaoError);
+        throw new Error(`Erro ao desativar suspensão: ${updateSuspensaoError.message}`);
+      }
+
+      // Depois atualizar status do aluno
       const { error: updateAlunoError } = await supabase
         .from('alunos')
         .update({
@@ -214,24 +231,16 @@ const GerenciarSuspensoes = () => {
         })
         .eq('user_id', suspensaoData.aluno_id);
 
-      if (updateAlunoError) throw updateAlunoError;
-
-      // Depois desativar suspensão
-      const { error: updateSuspensaoError } = await supabase
-        .from('suspensoes')
-        .update({ 
-          ativa: false,
-          data_fim: new Date().toISOString() // Finalizar a suspensão imediatamente
-        })
-        .eq('id', suspensaoId);
-
-      if (updateSuspensaoError) throw updateSuspensaoError;
+      if (updateAlunoError) {
+        console.error('Erro ao atualizar aluno:', updateAlunoError);
+        throw new Error(`Erro ao atualizar aluno: ${updateAlunoError.message}`);
+      }
 
       toast.success('Suspensão cancelada com sucesso!');
       fetchData();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao cancelar suspensão:', error);
-      toast.error('Erro ao cancelar suspensão');
+      toast.error(error.message || 'Erro ao cancelar suspensão');
     } finally {
       setLoading(false);
     }
@@ -248,7 +257,10 @@ const GerenciarSuspensoes = () => {
         .eq('id', suspensaoId)
         .single();
 
-      if (selectError) throw selectError;
+      if (selectError) {
+        console.error('Erro ao buscar suspensão:', selectError);
+        throw new Error(`Erro ao buscar suspensão: ${selectError.message}`);
+      }
 
       // Calcular nova duração em semanas
       const dataInicio = new Date(suspensaoData.data_inicio);
@@ -259,19 +271,7 @@ const GerenciarSuspensoes = () => {
       const agora = new Date();
       const aindaSuspenso = novaDataFim > agora;
 
-      // Primeiro atualizar dados do aluno
-      const { error: updateAlunoError } = await supabase
-        .from('alunos')
-        .update({ 
-          fim_suspensao: aindaSuspenso ? novaDataFim.toISOString() : null,
-          status_suspenso: aindaSuspenso,
-          atualizado_em: new Date().toISOString()
-        })
-        .eq('user_id', suspensaoData.aluno_id);
-
-      if (updateAlunoError) throw updateAlunoError;
-
-      // Depois atualizar suspensão
+      // Primeiro atualizar suspensão
       const { error: updateSuspensaoError } = await supabase
         .from('suspensoes')
         .update({ 
@@ -281,13 +281,31 @@ const GerenciarSuspensoes = () => {
         })
         .eq('id', suspensaoId);
 
-      if (updateSuspensaoError) throw updateSuspensaoError;
+      if (updateSuspensaoError) {
+        console.error('Erro ao atualizar suspensão:', updateSuspensaoError);
+        throw new Error(`Erro ao atualizar suspensão: ${updateSuspensaoError.message}`);
+      }
+
+      // Depois atualizar dados do aluno
+      const { error: updateAlunoError } = await supabase
+        .from('alunos')
+        .update({ 
+          fim_suspensao: aindaSuspenso ? novaDataFim.toISOString() : null,
+          status_suspenso: aindaSuspenso,
+          atualizado_em: new Date().toISOString()
+        })
+        .eq('user_id', suspensaoData.aluno_id);
+
+      if (updateAlunoError) {
+        console.error('Erro ao atualizar aluno:', updateAlunoError);
+        throw new Error(`Erro ao atualizar aluno: ${updateAlunoError.message}`);
+      }
 
       toast.success('Período da suspensão atualizado com sucesso!');
       fetchData();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao editar período:', error);
-      toast.error('Erro ao editar período da suspensão');
+      toast.error(error.message || 'Erro ao editar período da suspensão');
     } finally {
       setLoading(false);
     }

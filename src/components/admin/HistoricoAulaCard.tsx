@@ -21,6 +21,13 @@ interface HistoricoAula {
   presentes?: any[];
   faltas?: any[];
   listaEspera?: any[];
+  avisosFalta?: Array<{
+    id: string;
+    aluno_id: string;
+    aula_id: string;
+    status: string;
+    motivo?: string;
+  }>;
 }
 
 interface HistoricoAulaCardProps {
