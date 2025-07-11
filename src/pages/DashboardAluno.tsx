@@ -11,7 +11,7 @@ import EstatisticasPresencaAluno from '@/components/EstatisticasPresencaAluno';
 import InscricoesDetalhes from '@/components/InscricoesDetalhes';
 import { SecurityWrapper } from '@/components/SecurityWrapper';
 import { useSecurityCheck } from '@/hooks/useSecurityCheck';
-import { AlertTriangle, Shield } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface Aula {
@@ -460,17 +460,6 @@ const DashboardAluno = () => {
           </div>
         )}
 
-        {/* Indicador de Sistema Seguro */}
-        {isSecure && (
-          <div className="mb-6" data-security-critical>
-            <Alert className="border-green-500 bg-green-50">
-              <Shield className="h-4 w-4 text-green-600" />
-              <AlertDescription className="text-green-800">
-                ✅ Sistema seguro - Horário sincronizado e integridade verificada
-              </AlertDescription>
-            </Alert>
-          </div>
-        )}
 
         {/* Comunicado sobre período de inscrições */}
         <Card className="mb-6 border-blue-500 bg-blue-50">
