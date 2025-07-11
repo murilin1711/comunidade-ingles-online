@@ -106,12 +106,12 @@ const Login = () => {
                 onClick={() => navigate('/cadastro-funcionario')}
                 className="w-full border-black/30 text-black hover:bg-yellow-50"
               >
-                Acesso para Funcionários
+                Sistema de Cadastro de Usuários
               </Button>
             </div>
             <div className="text-center">
               <p className="text-xs text-black/60">
-                Área restrita para criação de novas contas
+                Para funcionários criarem contas de alunos, professores e admins
               </p>
             </div>
           </div>

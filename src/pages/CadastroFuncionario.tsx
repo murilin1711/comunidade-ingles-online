@@ -5,39 +5,32 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { toast } from '@/components/ui/sonner';
-import { useAuth } from '@/contexts/AuthContext';
+
 import Logo from '@/components/Logo';
 
 const CadastroFuncionario = () => {
-  const [formData, setFormData] = useState({
-    email: '',
-    senha: ''
-  });
+  const [senha, setSenha] = useState('');
   const [loading, setLoading] = useState(false);
-  const { signIn } = useAuth();
   const navigate = useNavigate();
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
-  };
+  const SENHA_ACESSO = '@Comunidade1%1090';
 
   const handleAcesso = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
-      // Authenticate using Supabase Auth
-      await signIn(formData.email, formData.senha);
-      
-      // Check if user is admin after authentication
-      // This will be handled by the AuthContext and redirect logic
-      toast.success('Acesso autorizado!');
+      if (senha === SENHA_ACESSO) {
+        toast.success('Acesso autorizado! Redirecionando para área de cadastro...');
+        setTimeout(() => {
+          navigate('/cadastro');
+        }, 1000);
+      } else {
+        toast.error('Senha incorreta. Acesso negado.');
+      }
     } catch (error: any) {
       console.error('Erro no acesso:', error);
-      toast.error('Credenciais inválidas. Acesso negado.');
+      toast.error('Erro ao verificar acesso.');
     } finally {
       setLoading(false);
     }
@@ -50,34 +43,20 @@ const CadastroFuncionario = () => {
           <Logo size="lg" className="mb-4" />
           <CardTitle className="text-2xl text-black">Área Restrita</CardTitle>
           <CardDescription className="text-black/70">
-            Acesso exclusivo para funcionários autorizados
+            Para criar contas de alunos, professores e administradores
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleAcesso} className="space-y-4">
             <div>
-              <Label htmlFor="email" className="text-black">Email</Label>
-              <Input
-                id="email"
-                name="email"
-                type="email"
-                value={formData.email}
-                onChange={handleChange}
-                placeholder="Digite seu email"
-                className="border-black/20 focus:border-yellow-500 focus:ring-yellow-500"
-                required
-              />
-            </div>
-            
-            <div>
-              <Label htmlFor="senha" className="text-black">Senha</Label>
+              <Label htmlFor="senha" className="text-black">Senha de Acesso</Label>
               <Input
                 id="senha"
                 name="senha"
                 type="password"
-                value={formData.senha}
-                onChange={handleChange}
-                placeholder="Digite sua senha"
+                value={senha}
+                onChange={(e) => setSenha(e.target.value)}
+                placeholder="Digite a senha de acesso"
                 className="border-black/20 focus:border-yellow-500 focus:ring-yellow-500"
                 required
               />
@@ -104,8 +83,8 @@ const CadastroFuncionario = () => {
           
           <div className="mt-6 p-3 bg-yellow-100 border border-black/20 rounded-md">
             <p className="text-xs text-black/80">
-              <strong>Atenção:</strong> Esta área é restrita a funcionários autorizados. 
-              O acesso não autorizado é proibido.
+              <strong>Atenção:</strong> Esta área permite a criação de novas contas no sistema. 
+              Acesso restrito a funcionários autorizados.
             </p>
           </div>
         </CardContent>
