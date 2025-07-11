@@ -16,32 +16,17 @@ export const useSecurityCheck = () => {
   // Função para obter tempo do servidor
   const getServerTime = useCallback(async (): Promise<Date | null> => {
     try {
-      const { data, error } = await supabase
-        .from('configuracoes_sistema')
-        .select('criado_em')
-        .limit(1)
-        .single();
+      const { data, error } = await supabase.rpc('get_server_time');
       
-      if (error || !data) return null;
-      
-      // Usar o timestamp do servidor como referência
-      const response = await fetch(`https://ctkmrkemtfuqnwwbusjf.supabase.co/rest/v1/rpc/get_server_time`, {
-        method: 'POST',
-        headers: {
-          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN0a21ya2VtdGZ1cW53d2J1c2pmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDkzMDE2NzgsImV4cCI6MjA2NDg3NzY3OH0.oPE0-4lsjPMIiJyj9ncPyKyw7XCdf6VXMJu63O4gwrU',
-          'Content-Type': 'application/json',
-        }
-      });
-      
-      if (response.ok) {
-        const serverTime = new Date(response.headers.get('date') || Date.now());
-        return serverTime;
+      if (error) {
+        console.error('Erro ao obter tempo do servidor:', error);
+        return null;
       }
       
-      return new Date();
+      return new Date(data);
     } catch (error) {
       console.error('Erro ao obter tempo do servidor:', error);
-      return new Date();
+      return null;
     }
   }, []);
 

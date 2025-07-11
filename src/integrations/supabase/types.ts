@@ -442,6 +442,10 @@ export type Database = {
         Args: { aula_uuid: string }
         Returns: string
       }
+      get_server_time: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       promover_lista_espera: {
         Args: { aula_uuid: string }
         Returns: undefined

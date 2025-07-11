@@ -9,6 +9,10 @@ import Logo from '@/components/Logo';
 import AvisarFaltaModal from '@/components/AvisarFaltaModal';
 import EstatisticasPresencaAluno from '@/components/EstatisticasPresencaAluno';
 import InscricoesDetalhes from '@/components/InscricoesDetalhes';
+import { SecurityWrapper } from '@/components/SecurityWrapper';
+import { useSecurityCheck } from '@/hooks/useSecurityCheck';
+import { AlertTriangle, Shield } from 'lucide-react';
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface Aula {
   id: string;
@@ -32,6 +36,7 @@ const DashboardAluno = () => {
   const [loading, setLoading] = useState(false);
   const [configuracoes, setConfiguracoes] = useState<any>(null);
   const { user, userData, logout } = useAuth();
+  const { isSecure, securityAlerts } = useSecurityCheck();
 
   const diasSemana = [
     'Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'
@@ -207,6 +212,12 @@ const DashboardAluno = () => {
 
   const handleInscricao = async (aulaId: string) => {
     if (!user || !userData) return;
+
+    // Verificação de segurança
+    if (!isSecure) {
+      toast.error('⚠️ Ação bloqueada por violação de segurança. Recarregue a página e evite manipular o sistema.');
+      return;
+    }
 
     if (isAlunoSuspenso()) {
       toast.error('Você está suspenso e não pode se inscrever em aulas');
@@ -435,6 +446,32 @@ const DashboardAluno = () => {
           </Button>
         </div>
 
+        {/* Alertas de Segurança */}
+        {!isSecure && securityAlerts.length > 0 && (
+          <div className="mb-6 space-y-4" data-security-critical>
+            {securityAlerts.map((alert, index) => (
+              <Alert key={index} className="border-red-500 bg-red-50">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription className="text-red-800">
+                  {alert.message}
+                </AlertDescription>
+              </Alert>
+            ))}
+          </div>
+        )}
+
+        {/* Indicador de Sistema Seguro */}
+        {isSecure && (
+          <div className="mb-6" data-security-critical>
+            <Alert className="border-green-500 bg-green-50">
+              <Shield className="h-4 w-4 text-green-600" />
+              <AlertDescription className="text-green-800">
+                ✅ Sistema seguro - Horário sincronizado e integridade verificada
+              </AlertDescription>
+            </Alert>
+          </div>
+        )}
+
         {/* Comunicado sobre período de inscrições */}
         <Card className="mb-6 border-blue-500 bg-blue-50">
           <CardContent className="pt-6">
@@ -561,13 +598,16 @@ const DashboardAluno = () => {
                         Inscrições fechadas
                       </Badge>
                     ) : (
-                      <Button 
-                        onClick={() => handleInscricao(aula.id)}
-                        disabled={loading || !podeSeInscrever}
-                        className="bg-yellow-500 hover:bg-yellow-600 text-black font-semibold"
-                      >
-                        {vagasRestantes > 0 ? 'Inscrever-me' : 'Entrar na Lista de Espera'}
-                      </Button>
+                      <SecurityWrapper onTamperDetected={() => toast.error('🚨 Manipulação detectada! Sistema bloqueado.')}>
+                        <Button 
+                          onClick={() => handleInscricao(aula.id)}
+                          disabled={loading || !podeSeInscrever || !isSecure}
+                          className="bg-yellow-500 hover:bg-yellow-600 text-black font-semibold disabled:opacity-50"
+                          data-security-critical
+                        >
+                          {!isSecure ? '🔒 Bloqueado' : vagasRestantes > 0 ? 'Inscrever-me' : 'Entrar na Lista de Espera'}
+                        </Button>
+                      </SecurityWrapper>
                     )}
                   </div>
                   
