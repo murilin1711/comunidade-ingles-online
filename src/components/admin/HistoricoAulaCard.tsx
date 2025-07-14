@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -46,8 +47,48 @@ const HistoricoAulaCard = ({ aula }: HistoricoAulaCardProps) => {
   const faltasCount = aula.faltas?.length || 0;
   const listaEsperaCount = aula.listaEspera?.length || 0;
   
-  const aulaRealizada = aula.data_aula && new Date(aula.data_aula) < new Date();
-  const statusAula = aulaRealizada ? 'realizada' : 'agendada';
+  // Melhorar lógica de status da aula
+  const getStatusAula = () => {
+    // Se não está ativa, verificar se tem data definida
+    if (!aula.ativa) {
+      if (aula.data_aula) {
+        const dataAula = new Date(aula.data_aula);
+        const hoje = new Date();
+        // Se tem data e já passou, foi concluída
+        if (dataAula <= hoje) {
+          return 'concluida';
+        }
+      }
+      // Se não tem data ou a data não passou, foi apenas desativada
+      return 'inativa';
+    }
+    
+    // Se está ativa, verificar se tem data e se já passou
+    if (aula.data_aula) {
+      const dataAula = new Date(aula.data_aula);
+      const hoje = new Date();
+      if (dataAula < hoje) {
+        return 'concluida';
+      }
+    }
+    
+    return 'ativa';
+  };
+
+  const statusAula = getStatusAula();
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'ativa':
+        return <Badge className="bg-green-500 text-white">Ativa</Badge>;
+      case 'inativa':
+        return <Badge variant="secondary">Inativa</Badge>;
+      case 'concluida':
+        return <Badge className="bg-blue-500 text-white">Concluída</Badge>;
+      default:
+        return <Badge variant="outline">-</Badge>;
+    }
+  };
 
   return (
     <>
@@ -67,11 +108,7 @@ const HistoricoAulaCard = ({ aula }: HistoricoAulaCardProps) => {
                 </p>
               </div>
             </div>
-            <Badge 
-              className={statusAula === 'realizada' ? 'bg-green-500 text-white' : 'bg-blue-500 text-white'}
-            >
-              {statusAula === 'realizada' ? 'Realizada' : 'Agendada'}
-            </Badge>
+            {getStatusBadge(statusAula)}
           </div>
 
           <div className="space-y-2 mb-4">
@@ -98,7 +135,7 @@ const HistoricoAulaCard = ({ aula }: HistoricoAulaCardProps) => {
                 <span className="text-black/60">Lista de Espera:</span>
                 <span className="font-medium text-black">{listaEsperaCount}</span>
               </div>
-              {aulaRealizada && (
+              {(statusAula === 'concluida' || presentesCount > 0 || faltasCount > 0) && (
                 <>
                   <div className="flex items-center gap-1">
                     <span className="w-2 h-2 bg-green-500 rounded-full"></span>

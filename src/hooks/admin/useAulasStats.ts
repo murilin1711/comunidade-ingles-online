@@ -47,8 +47,8 @@ export const useAulasStats = () => {
             motivo
           )
         `)
-        .eq('ativa', true)
-        .order('dia_semana', { ascending: true })
+        // Remover filtro .eq('ativa', true) para buscar TODAS as aulas incluindo inativas
+        .order('data_aula', { ascending: false })
         .order('horario', { ascending: true });
 
       if (filtros.nivel && filtros.nivel !== 'todos') {

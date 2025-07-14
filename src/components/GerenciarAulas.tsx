@@ -34,7 +34,13 @@ const GerenciarAulas = ({ aulas, onAulaAtualizada }: GerenciarAulasProps) => {
   ];
 
   const handleExcluirAula = async (aulaId: string, dia: string, horario: string) => {
-    const confirmacao = window.confirm(`Tem certeza que deseja excluir a aula de ${dia} às ${horario}?`);
+    const confirmacao = window.confirm(
+      `Tem certeza que deseja desativar a aula de ${dia} às ${horario}?\n\n` +
+      `⚠️ IMPORTANTE:\n` +
+      `• Os dados da aula serão preservados no histórico\n` +
+      `• A aula ficará invisível para os alunos\n` +
+      `• Você pode reativá-la depois no painel administrativo`
+    );
     
     if (!confirmacao) return;
 
@@ -47,11 +53,11 @@ const GerenciarAulas = ({ aulas, onAulaAtualizada }: GerenciarAulasProps) => {
 
       if (error) throw error;
 
-      toast.success('Aula excluída com sucesso');
+      toast.success('Aula desativada com sucesso! Os dados foram salvos no histórico.');
       onAulaAtualizada();
     } catch (error) {
-      console.error('Erro ao excluir aula:', error);
-      toast.error('Erro ao excluir aula');
+      console.error('Erro ao desativar aula:', error);
+      toast.error('Erro ao desativar aula');
     } finally {
       setLoading(false);
     }
@@ -63,24 +69,31 @@ const GerenciarAulas = ({ aulas, onAulaAtualizada }: GerenciarAulasProps) => {
   };
 
   const handleConcluirAula = async (aulaId: string, dia: string, horario: string) => {
-    const confirmacao = window.confirm(`Tem certeza que deseja marcar a aula de ${dia} às ${horario} como concluída?`);
+    const confirmacao = window.confirm(
+      `Tem certeza que deseja marcar a aula de ${dia} às ${horario} como concluída?\n\n` +
+      `⚠️ IMPORTANTE:\n` +
+      `• A aula será salva no histórico com todos os dados atuais\n` +
+      `• Ela ficará marcada como "Concluída" no histórico\n` +
+      `• Esta ação não pode ser desfeita`
+    );
     
     if (!confirmacao) return;
 
     setLoading(true);
     try {
-      // Marcar aula como inativa e atualizar data_aula para o passado
+      // Marcar aula como inativa e definir data_aula para hoje (concluída)
+      const hoje = new Date().toISOString().split('T')[0];
       const { error } = await supabase
         .from('aulas')
         .update({ 
           ativa: false,
-          data_aula: new Date().toISOString().split('T')[0] // Data de hoje
+          data_aula: hoje // Define data como hoje para marcar como concluída
         })
         .eq('id', aulaId);
 
       if (error) throw error;
 
-      toast.success('Aula marcada como concluída');
+      toast.success('Aula marcada como concluída e salva no histórico!');
       onAulaAtualizada();
     } catch (error) {
       console.error('Erro ao concluir aula:', error);

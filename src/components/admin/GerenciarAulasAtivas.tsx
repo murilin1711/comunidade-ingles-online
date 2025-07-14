@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -95,6 +96,7 @@ const GerenciarAulasAtivas = ({ onEditarAula }: GerenciarAulasAtivasProps) => {
   const fetchAulas = async () => {
     try {
       setLoading(true);
+      // Buscar TODAS as aulas, não apenas as ativas
       const { data, error } = await supabase
         .from('aulas')
         .select(`
@@ -130,8 +132,8 @@ const GerenciarAulasAtivas = ({ onEditarAula }: GerenciarAulasAtivasProps) => {
     try {
       setLoading(true);
       
-      // Se está reativando uma aula, mostrar aviso sobre dados salvos
       if (novoStatus) {
+        // Reativando aula - avisar que será tratada como nova
         const confirmacao = window.confirm(
           '⚠️ IMPORTANTE: Ao reativar esta aula, os dados anteriores ficam salvos no histórico, mas a aula será tratada como uma nova aula.\n\n' +
           'Isso significa que:\n' +
@@ -145,16 +147,32 @@ const GerenciarAulasAtivas = ({ onEditarAula }: GerenciarAulasAtivasProps) => {
           setLoading(false);
           return;
         }
+      } else {
+        // Desativando aula - avisar que será salva no histórico
+        const confirmacao = window.confirm(
+          '⚠️ DESATIVAR AULA\n\n' +
+          'Ao desativar esta aula:\n' +
+          '• Todos os dados atuais serão preservados no histórico\n' +
+          '• A aula ficará invisível para os alunos\n' +
+          '• Você pode reativar depois, mas será tratada como nova aula\n\n' +
+          'Deseja continuar?'
+        );
+        
+        if (!confirmacao) {
+          setLoading(false);
+          return;
+        }
       }
       
-      // Update the aula status
+      // Ao reativar, limpar data_aula para que seja tratada como nova
+      const updateData: any = { ativa: novoStatus };
+      if (novoStatus) {
+        updateData.data_aula = null; // Limpar data para reativar como nova aula
+      }
+      
       const { error } = await supabase
         .from('aulas')
-        .update({ 
-          ativa: novoStatus,
-          // Ao reativar, limpar a data_aula para que seja tratada como nova aula
-          ...(novoStatus && { data_aula: null })
-        })
+        .update(updateData)
         .eq('id', aulaId);
 
       if (error) {
@@ -165,7 +183,11 @@ const GerenciarAulasAtivas = ({ onEditarAula }: GerenciarAulasAtivasProps) => {
       // Update local state immediately for better UX
       setAulas(prevAulas => 
         prevAulas.map(aula => 
-          aula.id === aulaId ? { ...aula, ativa: novoStatus } : aula
+          aula.id === aulaId ? { 
+            ...aula, 
+            ativa: novoStatus,
+            ...(novoStatus && { data_aula: null })
+          } : aula
         )
       );
 
@@ -180,11 +202,9 @@ const GerenciarAulasAtivas = ({ onEditarAula }: GerenciarAulasAtivasProps) => {
     } catch (error: any) {
       console.error('Erro ao atualizar status da aula:', error);
       
-      // Show specific error message if available
       const errorMessage = error?.message || 'Erro desconhecido ao atualizar status da aula';
       toast.error(`Falha ao ${novoStatus ? 'ativar' : 'inativar'} aula: ${errorMessage}`);
       
-      // Revert optimistic update by refetching
       fetchAulas();
     } finally {
       setLoading(false);
@@ -223,13 +243,18 @@ const GerenciarAulasAtivas = ({ onEditarAula }: GerenciarAulasAtivasProps) => {
   };
 
   const getStatusAula = (aula: Aula) => {
-    if (!aula.data_aula) return 'sem_data';
+    // Se a aula não está ativa, considerar inativa
+    if (!aula.ativa) return 'inativa';
+    
+    // Se não tem data definida, considerar ativa (aula recorrente)
+    if (!aula.data_aula) return 'ativa';
     
     const dataAula = new Date(aula.data_aula);
     const hoje = new Date();
     
+    // Se a data da aula já passou, considerar concluída
     if (dataAula < hoje) return 'concluida';
-    if (!aula.ativa) return 'inativa';
+    
     return 'ativa';
   };
 
@@ -241,8 +266,6 @@ const GerenciarAulasAtivas = ({ onEditarAula }: GerenciarAulasAtivasProps) => {
         return <Badge variant="secondary">Inativa</Badge>;
       case 'concluida':
         return <Badge className="bg-blue-500 text-white">Concluída</Badge>;
-      case 'sem_data':
-        return <Badge variant="outline">Sem Data</Badge>;
       default:
         return <Badge variant="outline">-</Badge>;
     }
@@ -291,7 +314,6 @@ const GerenciarAulasAtivas = ({ onEditarAula }: GerenciarAulasAtivasProps) => {
                   <SelectItem value="ativa">Ativas</SelectItem>
                   <SelectItem value="inativa">Inativas</SelectItem>
                   <SelectItem value="concluida">Concluídas</SelectItem>
-                  <SelectItem value="sem_data">Sem Data</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -354,7 +376,7 @@ const GerenciarAulasAtivas = ({ onEditarAula }: GerenciarAulasAtivasProps) => {
                     </div>
 
                     <div className="flex items-center gap-4 ml-6">
-                      {/* Toggle Ativo/Inativo */}
+                      {/* Toggle Ativo/Inativo - só mostrar se não for concluída */}
                       {status !== 'concluida' && (
                         <div className="flex items-center gap-2">
                           <span className="text-sm text-black">
