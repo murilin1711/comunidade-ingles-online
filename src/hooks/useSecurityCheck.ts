@@ -36,29 +36,36 @@ export const useSecurityCheck = () => {
       const clientTime = new Date();
       const serverTime = await getServerTime();
       
-      if (!serverTime) return;
+      if (!serverTime) return false;
       
       const timeDifference = Math.abs(clientTime.getTime() - serverTime.getTime());
-      const maxAllowedDifference = 5 * 60 * 1000; // 5 minutos
+      // Aumentar tolerância para 30 minutos considerando fusos horários e latência
+      const maxAllowedDifference = 30 * 60 * 1000; // 30 minutos
       
       if (timeDifference > maxAllowedDifference) {
-        const alert: SecurityAlert = {
-          type: 'time_manipulation',
-          message: `⚠️ AVISO DE SEGURANÇA: Foi detectada uma diferença de ${Math.round(timeDifference / 60000)} minutos entre o horário do seu dispositivo e o servidor. Tentativas de manipular o horário para obter vantagem nas inscrições resultarão em advertência. Um mentor foi notificado sobre esta atividade suspeita.`,
-          severity: 'critical'
-        };
+        const hoursDecifference = Math.round(timeDifference / (60 * 60 * 1000));
         
-        setSecurityAlerts(prev => [...prev, alert]);
-        setIsSecure(false);
-        
-        // Log da tentativa de burla
-        logSecurityViolation('time_manipulation', {
-          clientTime: clientTime.toISOString(),
-          serverTime: serverTime.toISOString(),
-          difference: timeDifference
-        });
-        
-        return true;
+        // Se a diferença for muito grande (>2 horas), é provável manipulação
+        if (hoursDecifference >= 2) {
+          const alert: SecurityAlert = {
+            type: 'time_manipulation',
+            message: `🚨 VIOLAÇÃO DE SEGURANÇA DETECTADA: Você tentou trocar o horário do seu sistema! Diferença detectada: ${hoursDecifference} horas. Volte o horário padrão para acessar o site! Esta tentativa foi registrada e um mentor foi notificado.`,
+            severity: 'critical'
+          };
+          
+          setSecurityAlerts(prev => [...prev, alert]);
+          setIsSecure(false);
+          
+          // Log da tentativa de burla
+          logSecurityViolation('time_manipulation', {
+            clientTime: clientTime.toISOString(),
+            serverTime: serverTime.toISOString(),
+            difference: timeDifference,
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+          });
+          
+          return true;
+        }
       }
       
       return false;
@@ -68,74 +75,127 @@ export const useSecurityCheck = () => {
     }
   }, [getServerTime]);
 
-  // Detectar DevTools
+  // Detectar DevTools e Console
   const detectDevTools = useCallback(() => {
-    let devtools = { open: false };
+    let devtools = { open: false, consoleUsed: false };
     
-    const threshold = 160;
+    const threshold = 200; // Aumentar threshold para reduzir falsos positivos
     
-    setInterval(() => {
+    // Detectar abertura de DevTools baseado no tamanho da janela
+    const checkDevTools = () => {
       const widthThreshold = window.outerWidth - window.innerWidth > threshold;
       const heightThreshold = window.outerHeight - window.innerHeight > threshold;
       
-      if (widthThreshold || heightThreshold) {
-        if (!devtools.open) {
-          devtools.open = true;
-          
-          const alert: SecurityAlert = {
-            type: 'devtools_detected',
-            message: '🚨 AVISO DE SEGURANÇA: Foi detectada abertura das ferramentas de desenvolvedor. Qualquer tentativa de manipular o sistema através do console ou alteração de código resultará em advertência imediata. Um mentor foi notificado desta atividade.',
-            severity: 'critical'
-          };
-          
-          setSecurityAlerts(prev => [...prev, alert]);
-          setIsSecure(false);
-          
-          logSecurityViolation('devtools_detected', {
-            userAgent: navigator.userAgent,
-            screenResolution: `${screen.width}x${screen.height}`,
-            windowSize: `${window.innerWidth}x${window.innerHeight}`
-          });
-        }
-      } else {
+      if ((widthThreshold || heightThreshold) && !devtools.open) {
+        devtools.open = true;
+        // Não mostrar alerta ainda, apenas marcar como aberto
+        logSecurityViolation('devtools_opened', {
+          userAgent: navigator.userAgent,
+          screenResolution: `${screen.width}x${screen.height}`,
+          windowSize: `${window.innerWidth}x${window.innerHeight}`
+        });
+      } else if (!widthThreshold && !heightThreshold) {
         devtools.open = false;
       }
-    }, 500);
+    };
 
-    // Detectar uso do console
-    let consoleWarningShown = false;
+    setInterval(checkDevTools, 1000);
+
+    // Detectar uso efetivo do console (apenas comandos digitados pelo usuário)
     const originalConsole = {
       log: console.log,
       warn: console.warn,
       error: console.error,
       debug: console.debug,
-      info: console.info
+      info: console.info,
+      dir: console.dir,
+      table: console.table
     };
-    
-    ['log', 'warn', 'error', 'debug', 'info'].forEach(method => {
-      const methodKey = method as 'log' | 'warn' | 'error' | 'debug' | 'info';
-      const originalMethod = console[methodKey];
+
+    // Override console methods apenas se DevTools estiver aberto
+    ['log', 'warn', 'error', 'debug', 'info', 'dir', 'table'].forEach(method => {
+      const methodKey = method as keyof typeof originalConsole;
+      const originalMethod = console[methodKey] as any;
       
       console[methodKey] = function(...args: any[]) {
-        if (!consoleWarningShown) {
-          consoleWarningShown = true;
-          
-          const alert: SecurityAlert = {
-            type: 'client_modification',
-            message: '⛔ AVISO FINAL: Uso do console detectado! Parar imediatamente ou receberá advertência. Mentores foram notificados.',
-            severity: 'critical'
-          };
-          
-          setSecurityAlerts(prev => [...prev, alert]);
-          
-          logSecurityViolation('console_usage', {
-            method,
-            args: args.map(arg => typeof arg === 'object' ? '[object]' : String(arg))
-          });
+        // Só alertar se DevTools estiver aberto E o usuário digitou algo
+        if (devtools.open && !devtools.consoleUsed) {
+          // Verificar se não é log interno do sistema
+          const isSystemLog = args.some(arg => 
+            typeof arg === 'string' && (
+              arg.includes('Dashboard') ||
+              arg.includes('changed, updating') ||
+              arg.includes('Real-time') ||
+              arg.includes('Supabase') ||
+              arg.includes('Auth state')
+            )
+          );
+
+          if (!isSystemLog) {
+            devtools.consoleUsed = true;
+            
+            const alert: SecurityAlert = {
+              type: 'client_modification',
+              message: '🚨 VIOLAÇÃO DETECTADA: Uso do console detectado! Você está tentando usar ferramentas de desenvolvedor para manipular o sistema. Esta ação foi registrada e um mentor foi notificado. Pare imediatamente!',
+              severity: 'critical'
+            };
+            
+            setSecurityAlerts(prev => [...prev, alert]);
+            setIsSecure(false);
+            
+            logSecurityViolation('console_usage', {
+              method,
+              args: args.map(arg => typeof arg === 'object' ? '[object]' : String(arg))
+            });
+          }
         }
         
         return originalMethod.apply(console, args);
       };
+    });
+
+    // Detectar tentativas de inspecionar elemento
+    document.addEventListener('contextmenu', (e) => {
+      if (e.ctrlKey) {
+        e.preventDefault();
+        
+        const alert: SecurityAlert = {
+          type: 'devtools_detected',
+          message: '🚨 AVISO: Tentativa de abrir menu de contexto detectada. Não tente inspecionar elementos ou usar ferramentas de desenvolvedor.',
+          severity: 'warning'
+        };
+        
+        setSecurityAlerts(prev => [...prev, alert]);
+        
+        logSecurityViolation('context_menu_attempt', {
+          timestamp: new Date().toISOString()
+        });
+      }
+    });
+
+    // Detectar teclas de atalho para DevTools
+    document.addEventListener('keydown', (e) => {
+      // F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+U
+      if (e.key === 'F12' || 
+          (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'J')) ||
+          (e.ctrlKey && e.key === 'U')) {
+        e.preventDefault();
+        
+        const alert: SecurityAlert = {
+          type: 'devtools_detected',
+          message: '🚨 VIOLAÇÃO DETECTADA: Tentativa de abrir ferramentas de desenvolvedor! Esta ação foi bloqueada e registrada. Um mentor foi notificado.',
+          severity: 'critical'
+        };
+        
+        setSecurityAlerts(prev => [...prev, alert]);
+        setIsSecure(false);
+        
+        logSecurityViolation('devtools_shortcut', {
+          key: e.key,
+          ctrlKey: e.ctrlKey,
+          shiftKey: e.shiftKey
+        });
+      }
     });
   }, []);
 

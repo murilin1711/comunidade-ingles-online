@@ -9,6 +9,7 @@ import Logo from '@/components/Logo';
 import AvisarFaltaModal from '@/components/AvisarFaltaModal';
 import EstatisticasPresencaAluno from '@/components/EstatisticasPresencaAluno';
 import InscricoesDetalhes from '@/components/InscricoesDetalhes';
+import VerificarAvisosPendentes from '@/components/VerificarAvisosPendentes';
 import { SecurityWrapper } from '@/components/SecurityWrapper';
 import { useSecurityCheck } from '@/hooks/useSecurityCheck';
 import { AlertTriangle } from 'lucide-react';
@@ -492,6 +493,9 @@ const DashboardAluno = () => {
             </CardContent>
           </Card>
         )}
+
+        {/* Verificar se há avisos de falta pendentes */}
+        <VerificarAvisosPendentes />
 
         {isAlunoSuspenso() && userData.fimSuspensao && (
           <Card className="mb-6 border-red-500 bg-red-50">

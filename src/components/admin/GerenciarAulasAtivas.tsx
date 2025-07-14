@@ -130,10 +130,31 @@ const GerenciarAulasAtivas = ({ onEditarAula }: GerenciarAulasAtivasProps) => {
     try {
       setLoading(true);
       
+      // Se está reativando uma aula, mostrar aviso sobre dados salvos
+      if (novoStatus) {
+        const confirmacao = window.confirm(
+          '⚠️ IMPORTANTE: Ao reativar esta aula, os dados anteriores ficam salvos no histórico, mas a aula será tratada como uma nova aula.\n\n' +
+          'Isso significa que:\n' +
+          '• Alunos que se inscreveram anteriormente não estarão mais inscritos\n' +
+          '• É necessário que os alunos se inscrevam novamente\n' +
+          '• Os dados da aula anterior permanecem no histórico detalhado\n\n' +
+          'Deseja continuar com a reativação?'
+        );
+        
+        if (!confirmacao) {
+          setLoading(false);
+          return;
+        }
+      }
+      
       // Update the aula status
       const { error } = await supabase
         .from('aulas')
-        .update({ ativa: novoStatus })
+        .update({ 
+          ativa: novoStatus,
+          // Ao reativar, limpar a data_aula para que seja tratada como nova aula
+          ...(novoStatus && { data_aula: null })
+        })
         .eq('id', aulaId);
 
       if (error) {
@@ -148,7 +169,11 @@ const GerenciarAulasAtivas = ({ onEditarAula }: GerenciarAulasAtivasProps) => {
         )
       );
 
-      toast.success(`Aula ${novoStatus ? 'ativada' : 'inativada'} com sucesso!`);
+      toast.success(
+        novoStatus 
+          ? 'Aula reativada com sucesso! Os alunos precisarão se inscrever novamente.' 
+          : 'Aula desativada com sucesso! Os dados foram salvos no histórico.'
+      );
       
       // Refresh data to ensure consistency
       setTimeout(() => fetchAulas(), 500);
