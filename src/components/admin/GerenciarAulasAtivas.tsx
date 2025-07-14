@@ -133,13 +133,14 @@ const GerenciarAulasAtivas = ({ onEditarAula }: GerenciarAulasAtivasProps) => {
       setLoading(true);
       
       if (novoStatus) {
-        // Reativando aula - avisar que será tratada como nova
+        // REATIVANDO AULA - Criar uma nova aula com as mesmas configurações
         const confirmacao = window.confirm(
-          '⚠️ IMPORTANTE: Ao reativar esta aula, os dados anteriores ficam salvos no histórico, mas a aula será tratada como uma nova aula.\n\n' +
-          'Isso significa que:\n' +
-          '• Alunos que se inscreveram anteriormente não estarão mais inscritos\n' +
-          '• É necessário que os alunos se inscrevam novamente\n' +
-          '• Os dados da aula anterior permanecem no histórico detalhado\n\n' +
+          '⚠️ REATIVAR AULA\n\n' +
+          'Ao reativar esta aula, será criada uma NOVA AULA com as mesmas configurações:\n' +
+          '• A aula anterior permanece no histórico com todos os dados\n' +
+          '• Uma nova aula será criada (sem inscrições, sem faltas)\n' +
+          '• Os alunos precisarão se inscrever novamente na nova aula\n' +
+          '• As configurações (professor, horário, etc.) serão copiadas\n\n' +
           'Deseja continuar com a reativação?'
         );
         
@@ -147,14 +148,52 @@ const GerenciarAulasAtivas = ({ onEditarAula }: GerenciarAulasAtivasProps) => {
           setLoading(false);
           return;
         }
+
+        // Buscar dados da aula atual para criar nova
+        const { data: aulaOriginal, error: fetchError } = await supabase
+          .from('aulas')
+          .select('*')
+          .eq('id', aulaId)
+          .single();
+
+        if (fetchError) {
+          console.error('Erro ao buscar aula original:', fetchError);
+          throw fetchError;
+        }
+
+        // Criar nova aula com as mesmas configurações, mas sem data_aula (nova aula)
+        const novaAulaData = {
+          professor_id: aulaOriginal.professor_id,
+          professor_nome: aulaOriginal.professor_nome,
+          dia_semana: aulaOriginal.dia_semana,
+          horario: aulaOriginal.horario,
+          link_meet: aulaOriginal.link_meet,
+          nivel: aulaOriginal.nivel,
+          capacidade: aulaOriginal.capacidade,
+          ativa: true,
+          inscricoes_abertas: true,
+          data_aula: null // Nova aula sem data específica
+        };
+
+        const { error: createError } = await supabase
+          .from('aulas')
+          .insert(novaAulaData);
+
+        if (createError) {
+          console.error('Erro ao criar nova aula:', createError);
+          throw createError;
+        }
+
+        toast.success('Nova aula criada com sucesso! A aula anterior foi preservada no histórico.');
+        
       } else {
-        // Desativando aula - avisar que será salva no histórico
+        // DESATIVANDO AULA - Avisar que será salva no histórico
         const confirmacao = window.confirm(
           '⚠️ DESATIVAR AULA\n\n' +
           'Ao desativar esta aula:\n' +
           '• Todos os dados atuais serão preservados no histórico\n' +
           '• A aula ficará invisível para os alunos\n' +
-          '• Você pode reativar depois, mas será tratada como nova aula\n\n' +
+          '• Você pode reativá-la depois (será criada uma nova aula)\n\n' +
           'Deseja continuar?'
         );
         
@@ -162,48 +201,28 @@ const GerenciarAulasAtivas = ({ onEditarAula }: GerenciarAulasAtivasProps) => {
           setLoading(false);
           return;
         }
+        
+        // Apenas desativar a aula existente
+        const { error } = await supabase
+          .from('aulas')
+          .update({ ativa: false })
+          .eq('id', aulaId);
+
+        if (error) {
+          console.error('Erro na requisição:', error);
+          throw error;
+        }
+
+        toast.success('Aula desativada com sucesso! Os dados foram salvos no histórico.');
       }
       
-      // Ao reativar, limpar data_aula para que seja tratada como nova
-      const updateData: any = { ativa: novoStatus };
-      if (novoStatus) {
-        updateData.data_aula = null; // Limpar data para reativar como nova aula
-      }
-      
-      const { error } = await supabase
-        .from('aulas')
-        .update(updateData)
-        .eq('id', aulaId);
-
-      if (error) {
-        console.error('Erro na requisição:', error);
-        throw error;
-      }
-
-      // Update local state immediately for better UX
-      setAulas(prevAulas => 
-        prevAulas.map(aula => 
-          aula.id === aulaId ? { 
-            ...aula, 
-            ativa: novoStatus,
-            ...(novoStatus && { data_aula: null })
-          } : aula
-        )
-      );
-
-      toast.success(
-        novoStatus 
-          ? 'Aula reativada com sucesso! Os alunos precisarão se inscrever novamente.' 
-          : 'Aula desativada com sucesso! Os dados foram salvos no histórico.'
-      );
-      
-      // Refresh data to ensure consistency
+      // Refresh data to show changes
       setTimeout(() => fetchAulas(), 500);
     } catch (error: any) {
       console.error('Erro ao atualizar status da aula:', error);
       
       const errorMessage = error?.message || 'Erro desconhecido ao atualizar status da aula';
-      toast.error(`Falha ao ${novoStatus ? 'ativar' : 'inativar'} aula: ${errorMessage}`);
+      toast.error(`Falha ao ${novoStatus ? 'reativar' : 'inativar'} aula: ${errorMessage}`);
       
       fetchAulas();
     } finally {
