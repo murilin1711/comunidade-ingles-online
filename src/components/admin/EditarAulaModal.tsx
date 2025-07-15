@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -179,7 +180,7 @@ const EditarAulaModal = ({ open, onOpenChange, aula, onAulaEditada }: EditarAula
               <SelectTrigger className="border-black/30">
                 <SelectValue placeholder="Selecione um professor" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="z-50">
                 {professores.map((professor) => (
                   <SelectItem key={professor.user_id} value={professor.user_id}>
                     {professor.nome} ({professor.email})
@@ -197,7 +198,7 @@ const EditarAulaModal = ({ open, onOpenChange, aula, onAulaEditada }: EditarAula
                 <SelectTrigger className="border-black/30">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="z-50">
                   {diasSemana.map((dia) => (
                     <SelectItem key={dia.value} value={dia.value.toString()}>
                       {dia.label}
@@ -229,7 +230,7 @@ const EditarAulaModal = ({ open, onOpenChange, aula, onAulaEditada }: EditarAula
                 <SelectTrigger className="border-black/30">
                   <SelectValue placeholder="Selecione o nível" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="z-50">
                   {niveisDisponiveis.map((n) => (
                     <SelectItem key={n} value={n}>
                       {n}
@@ -284,13 +285,13 @@ const EditarAulaModal = ({ open, onOpenChange, aula, onAulaEditada }: EditarAula
                   {dataAula ? format(dataAula, "dd/MM/yyyy", { locale: ptBR }) : "Selecionar data"}
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
+              <PopoverContent className="w-auto p-0 z-50" align="start">
                 <Calendar
                   mode="single"
                   selected={dataAula}
                   onSelect={setDataAula}
                   initialFocus
-                  className="pointer-events-auto"
+                  className="p-3 pointer-events-auto"
                 />
                 {dataAula && (
                   <div className="p-3 border-t">

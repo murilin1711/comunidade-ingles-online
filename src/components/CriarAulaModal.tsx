@@ -104,7 +104,7 @@ const CriarAulaModal = ({ professorId, onAulaCriada }: CriarAulaModalProps) => {
           Criar Aula
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[425px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-black">Criar Nova Aula</DialogTitle>
         </DialogHeader>
@@ -130,7 +130,7 @@ const CriarAulaModal = ({ professorId, onAulaCriada }: CriarAulaModalProps) => {
               <SelectTrigger className="border-black/20 focus:border-yellow-500 focus:ring-yellow-500">
                 <SelectValue placeholder="Selecione o nível" />
               </SelectTrigger>
-              <SelectContent className="bg-white border border-black/20">
+              <SelectContent className="bg-white border border-black/20 z-50">
                 {niveis.map((nivel) => (
                   <SelectItem key={nivel.value} value={nivel.value} className="text-black hover:bg-yellow-50">
                     {nivel.label}
@@ -155,14 +155,14 @@ const CriarAulaModal = ({ professorId, onAulaCriada }: CriarAulaModalProps) => {
                   {selectedDate ? format(selectedDate, "dd/MM/yyyy") : <span>Selecione a data</span>}
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
+              <PopoverContent className="w-auto p-0 z-50" align="start">
                 <Calendar
                   mode="single"
                   selected={selectedDate}
                   onSelect={setSelectedDate}
                   disabled={(date) => date < new Date()}
                   initialFocus
-                  className={cn("p-3 pointer-events-auto")}
+                  className="p-3 pointer-events-auto"
                 />
               </PopoverContent>
             </Popover>
@@ -177,7 +177,7 @@ const CriarAulaModal = ({ professorId, onAulaCriada }: CriarAulaModalProps) => {
               <SelectTrigger className="border-black/20 focus:border-yellow-500 focus:ring-yellow-500">
                 <SelectValue placeholder="Selecione o dia da semana" />
               </SelectTrigger>
-              <SelectContent className="bg-white border border-black/20">
+              <SelectContent className="bg-white border border-black/20 z-50">
                 {diasSemana.map((dia) => (
                   <SelectItem key={dia.value} value={dia.value} className="text-black hover:bg-yellow-50">
                     {dia.label}

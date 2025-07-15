@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -210,7 +211,7 @@ const CriarEditarAulas = () => {
                 <SelectTrigger className="border-black/30">
                   <SelectValue placeholder="Selecione o nível" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="z-50">
                   {niveis.map((nivel) => (
                     <SelectItem key={nivel.value} value={nivel.value}>
                       {nivel.label}
@@ -235,13 +236,14 @@ const CriarEditarAulas = () => {
                     {selectedDate ? format(selectedDate, "dd/MM/yyyy") : <span>Selecione a data</span>}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
+                <PopoverContent className="w-auto p-0 z-50" align="start">
                   <Calendar
                     mode="single"
                     selected={selectedDate}
                     onSelect={setSelectedDate}
                     disabled={(date) => date < new Date()}
                     initialFocus
+                    className="p-3 pointer-events-auto"
                   />
                 </PopoverContent>
               </Popover>
@@ -256,7 +258,7 @@ const CriarEditarAulas = () => {
                 <SelectTrigger className="border-black/30">
                   <SelectValue placeholder="Selecione o dia" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="z-50">
                   {diasSemana.map((dia) => (
                     <SelectItem key={dia.value} value={dia.value}>
                       {dia.label}
