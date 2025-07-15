@@ -67,7 +67,7 @@ const VerificarAvisosPendentes = () => {
               </span>
             </div>
             <p className="text-sm mt-2">
-              Durante este período, você pode continuar se inscrevendo em aulas normalmente.
+              Durante este período, você não pode se inscrever em novas aulas até a conclusão da análise.
             </p>
           </AlertDescription>
         </Alert>

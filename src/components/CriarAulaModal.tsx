@@ -75,7 +75,7 @@ const CriarAulaModal = ({ professorId, onAulaCriada }: CriarAulaModalProps) => {
           nivel: formData.nivel,
           data_aula: selectedDate.toISOString().split('T')[0], // Formato YYYY-MM-DD
           capacidade: 6,
-          ativa: true
+          ativa: false // Inicia como inativa até ser agendada
         });
 
       if (error) throw error;

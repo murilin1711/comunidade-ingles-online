@@ -36,6 +36,7 @@ const DashboardAluno = () => {
   const [aulas, setAulas] = useState<Aula[]>([]);
   const [loading, setLoading] = useState(false);
   const [configuracoes, setConfiguracoes] = useState<any>(null);
+  const [avisosPendentes, setAvisosPendentes] = useState<number>(0);
   const { user, userData, logout } = useAuth();
   const { isSecure, securityAlerts } = useSecurityCheck();
 
@@ -47,6 +48,7 @@ const DashboardAluno = () => {
     if (user && userData?.role === 'aluno') {
       fetchAulas();
       fetchConfiguracoes();
+      fetchAvisosPendentes();
     }
   }, [user, userData]);
 
@@ -63,6 +65,23 @@ const DashboardAluno = () => {
       setConfiguracoes(data);
     } catch (error) {
       console.error('Erro ao buscar configurações:', error);
+    }
+  };
+
+  const fetchAvisosPendentes = async () => {
+    if (!user) return;
+    
+    try {
+      const { count, error } = await supabase
+        .from('avisos_falta')
+        .select('*', { count: 'exact' })
+        .eq('aluno_id', user.id)
+        .eq('status', 'pendente');
+
+      if (error) throw error;
+      setAvisosPendentes(count || 0);
+    } catch (error) {
+      console.error('Erro ao buscar avisos pendentes:', error);
     }
   };
 
@@ -96,19 +115,32 @@ const DashboardAluno = () => {
            fetchAulas();
          }
        )
-       .on(
-         'postgres_changes',
-         {
-           event: '*',
-           schema: 'public',
-           table: 'configuracoes_sistema'
-         },
-         () => {
-           console.log('Configurações changed, updating dashboard...');
-           fetchConfiguracoes();
-         }
-       )
-       .subscribe();
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'configuracoes_sistema'
+          },
+          () => {
+            console.log('Configurações changed, updating dashboard...');
+            fetchConfiguracoes();
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'avisos_falta',
+            filter: `aluno_id=eq.${user.id}`
+          },
+          () => {
+            console.log('Avisos falta changed, updating dashboard...');
+            fetchAvisosPendentes();
+          }
+        )
+        .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
@@ -222,6 +254,11 @@ const DashboardAluno = () => {
 
     if (isAlunoSuspenso()) {
       toast.error('Você está suspenso e não pode se inscrever em aulas');
+      return;
+    }
+
+    if (avisosPendentes > 0) {
+      toast.error('Você possui avisos de falta em análise e não pode se inscrever em aulas no momento');
       return;
     }
 
@@ -526,7 +563,8 @@ const DashboardAluno = () => {
             const vagasRestantes = aula.capacidade - aula.inscricoes_count;
             const suspenso = isAlunoSuspenso();
             const jaInscrito = !!aula.minha_inscricao;
-            const podeSeInscrever = (inscricaoAberta || aula.inscricoes_abertas) && !suspenso && !jaInscrito;
+            const temAvisoPendente = avisosPendentes > 0;
+            const podeSeInscrever = (inscricaoAberta || aula.inscricoes_abertas) && !suspenso && !jaInscrito && !temAvisoPendente;
             
             return (
               <Card key={aula.id} className="border-black/20 shadow-md">
@@ -586,6 +624,10 @@ const DashboardAluno = () => {
                       </>
                     ) : suspenso ? (
                       <Badge variant="destructive">Suspenso</Badge>
+                    ) : temAvisoPendente ? (
+                      <Badge variant="destructive" className="bg-amber-100 text-amber-800">
+                        Aviso pendente
+                      </Badge>
                     ) : !inscricaoAberta ? (
                       <Badge variant="secondary" className="bg-blue-100 text-blue-800">
                         Inscrições fechadas
