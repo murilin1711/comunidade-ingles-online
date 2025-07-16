@@ -13,6 +13,7 @@ import VerificarAvisosPendentes from '@/components/VerificarAvisosPendentes';
 import { SecurityWrapper } from '@/components/SecurityWrapper';
 import { useSecurityCheck } from '@/hooks/useSecurityCheck';
 import { AlertTriangle } from 'lucide-react';
+import YellowLoadingSpinner from '@/components/YellowLoadingSpinner';
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface Aula {
@@ -225,6 +226,24 @@ const DashboardAluno = () => {
       return;
     }
 
+    // Verificar se há avisos de falta pendentes
+    const { data: avisosPendentes, error: avisosError } = await supabase
+      .from('avisos_falta')
+      .select('id')
+      .eq('aluno_id', user.id)
+      .eq('status', 'pendente');
+      
+    if (avisosError) {
+      console.error('Erro ao verificar avisos pendentes:', avisosError);
+      toast.error('Erro ao verificar avisos pendentes. Tente novamente.');
+      return;
+    }
+    
+    if (avisosPendentes && avisosPendentes.length > 0) {
+      toast.error('Você não pode se inscrever em aulas enquanto tem avisos de falta pendentes de análise.');
+      return;
+    }
+
     setLoading(true);
     try {
       const aula = aulas.find(a => a.id === aulaId);
@@ -406,10 +425,7 @@ const DashboardAluno = () => {
   if (!userData) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-yellow-50 to-yellow-100 flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-xl font-semibold text-black mb-2">Carregando dados do usuário...</h2>
-          <p className="text-black/60">Aguarde enquanto buscamos suas informações.</p>
-        </div>
+        <YellowLoadingSpinner message="Carregando dados do usuário..." size="lg" />
       </div>
     );
   }

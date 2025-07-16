@@ -66,8 +66,8 @@ const VerificarAvisosPendentes = () => {
                 Aguarde a decisão sobre a suspensão. Você receberá uma notificação quando a análise for concluída.
               </span>
             </div>
-            <p className="text-sm mt-2">
-              Durante este período, você pode continuar se inscrevendo em aulas normalmente.
+            <p className="text-sm mt-2 text-red-700 font-medium">
+              Durante este período, você NÃO pode se inscrever em novas aulas.
             </p>
           </AlertDescription>
         </Alert>

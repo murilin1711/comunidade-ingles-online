@@ -54,7 +54,7 @@ const diasSemana = [
   { value: 6, label: 'Sábado' }
 ];
 
-const niveisDisponiveis = ['Beginner', 'Elementary', 'Pre-Intermediate', 'Intermediate', 'Upper-Intermediate', 'Advanced', 'Lower'];
+const niveisDisponiveis = ['Upper', 'Lower'];
 
 const EditarAulaModal = ({ open, onOpenChange, aula, onAulaEditada }: EditarAulaModalProps) => {
   const { user } = useAuth();

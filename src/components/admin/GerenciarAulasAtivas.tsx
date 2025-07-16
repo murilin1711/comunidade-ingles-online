@@ -23,6 +23,7 @@ import {
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import EditarAulaModal from './EditarAulaModal';
+import YellowLoadingSpinner from '../YellowLoadingSpinner';
 
 interface Aula {
   id: string;
@@ -202,10 +203,16 @@ const GerenciarAulasAtivas = ({ onEditarAula }: GerenciarAulasAtivasProps) => {
           return;
         }
         
-        // Apenas desativar a aula existente
+        // Desativar a aula preservando a data para o histórico
+        const aulaAtual = aulas.find(a => a.id === aulaId);
+        const dataHistorico = aulaAtual?.data_aula || new Date().toISOString().split('T')[0];
+        
         const { error } = await supabase
           .from('aulas')
-          .update({ ativa: false })
+          .update({ 
+            ativa: false,
+            data_aula: dataHistorico // Preservar data no histórico
+          })
           .eq('id', aulaId);
 
         if (error) {
@@ -356,7 +363,9 @@ const GerenciarAulasAtivas = ({ onEditarAula }: GerenciarAulasAtivasProps) => {
       {/* Lista de Aulas */}
       <div className="grid gap-4">
         {loading ? (
-          <div className="text-center py-8 text-black/60">Carregando aulas...</div>
+          <div className="py-8">
+            <YellowLoadingSpinner message="Carregando aulas..." />
+          </div>
         ) : aulasFiltradas.length === 0 ? (
           <div className="text-center py-8 text-black/60">Nenhuma aula encontrada</div>
         ) : (
@@ -401,13 +410,13 @@ const GerenciarAulasAtivas = ({ onEditarAula }: GerenciarAulasAtivasProps) => {
                           <span className="text-sm text-black">
                             {aula.ativa ? 'Ativa' : 'Inativa'}
                           </span>
-                          <Switch
+                           <Switch
                             checked={aula.ativa}
                             disabled={loading}
                             onCheckedChange={(checked) => toggleAulaAtiva(aula.id, checked)}
                           />
                           {loading && (
-                            <div className="w-4 h-4 animate-spin rounded-full border-2 border-gray-300 border-t-black"></div>
+                            <YellowLoadingSpinner size="sm" className="ml-2" />
                           )}
                         </div>
                       )}
@@ -437,33 +446,38 @@ const GerenciarAulasAtivas = ({ onEditarAula }: GerenciarAulasAtivasProps) => {
                             <Trash2 className="w-4 h-4" />
                           </Button>
                         </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Apagar Aula Permanentemente</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Tem certeza que deseja apagar permanentemente a aula de{' '}
-                              <strong>{diasSemana[aula.dia_semana]} às {aula.horario}</strong>?
-                              <br />
-                              <br />
-                              Esta ação não pode ser desfeita e irá remover:
-                              <br />
-                              • A aula e todas suas configurações
-                              <br />
-                              • Todas as inscrições dos alunos
-                              <br />
-                              • Histórico relacionado à esta aula
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={() => apagarAulaPermanentemente(aula.id)}
-                              className="bg-red-600 hover:bg-red-700"
-                            >
-                              Apagar Permanentemente
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
+                         <AlertDialogContent>
+                           <AlertDialogHeader>
+                             <AlertDialogTitle>Apagar Aula Permanentemente</AlertDialogTitle>
+                             <AlertDialogDescription>
+                               Tem certeza que deseja apagar permanentemente a aula de{' '}
+                               <strong>{diasSemana[aula.dia_semana]} às {aula.horario}</strong>?
+                               <br />
+                               <br />
+                               Esta ação não pode ser desfeita e irá remover:
+                               <br />
+                               • A aula e todas suas configurações
+                               <br />
+                               • Todas as inscrições dos alunos
+                               <br />
+                               • Histórico relacionado à esta aula
+                             </AlertDialogDescription>
+                           </AlertDialogHeader>
+                           <AlertDialogFooter>
+                             <AlertDialogCancel disabled={loading}>Cancelar</AlertDialogCancel>
+                             <AlertDialogAction
+                               onClick={() => apagarAulaPermanentemente(aula.id)}
+                               className="bg-red-600 hover:bg-red-700"
+                               disabled={loading}
+                             >
+                               {loading ? (
+                                 <YellowLoadingSpinner size="sm" message="" />
+                               ) : (
+                                 'Apagar Permanentemente'
+                               )}
+                             </AlertDialogAction>
+                           </AlertDialogFooter>
+                         </AlertDialogContent>
                       </AlertDialog>
                     </div>
                   </div>
