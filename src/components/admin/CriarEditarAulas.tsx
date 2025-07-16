@@ -122,7 +122,7 @@ const CriarEditarAulas = () => {
         nivel: formData.nivel,
         capacidade: formData.capacidade,
         data_aula: selectedDate.toISOString().split('T')[0],
-        ativa: false // Inicia como inativa até ser agendada
+        ativa: true
       };
 
       if (aulaEditando) {
