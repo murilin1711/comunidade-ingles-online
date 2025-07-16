@@ -23,6 +23,7 @@ import {
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import EditarAulaModal from './EditarAulaModal';
+import YellowLoadingSpinner from '../YellowLoadingSpinner';
 
 interface Aula {
   id: string;
@@ -51,6 +52,7 @@ const GerenciarAulasAtivas = ({ onEditarAula }: GerenciarAulasAtivasProps) => {
   const [aulaParaApagar, setAulaParaApagar] = useState<string | null>(null);
   const [aulaParaEditar, setAulaParaEditar] = useState<Aula | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [deletingAula, setDeletingAula] = useState(false);
 
   const diasSemana = [
     'Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'
@@ -232,7 +234,7 @@ const GerenciarAulasAtivas = ({ onEditarAula }: GerenciarAulasAtivasProps) => {
 
   const apagarAulaPermanentemente = async (aulaId: string) => {
     try {
-      setLoading(true);
+      setDeletingAula(true);
 
       // Primeiro deletar todas as inscrições relacionadas
       const { error: inscricoesError } = await supabase
@@ -256,7 +258,7 @@ const GerenciarAulasAtivas = ({ onEditarAula }: GerenciarAulasAtivasProps) => {
       console.error('Erro ao apagar aula:', error);
       toast.error(`Erro ao apagar aula: ${error.message}`);
     } finally {
-      setLoading(false);
+      setDeletingAula(false);
       setAulaParaApagar(null);
     }
   };
@@ -485,6 +487,9 @@ const GerenciarAulasAtivas = ({ onEditarAula }: GerenciarAulasAtivasProps) => {
           setAulaParaEditar(null);
         }}
       />
+
+      {/* Loading Spinner para operações de delete */}
+      <YellowLoadingSpinner show={deletingAula} delay={500} />
     </div>
   );
 };
